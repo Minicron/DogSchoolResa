@@ -41,4 +41,15 @@ class SlotOccurence extends Model
     {
         return $this->hasMany(SlotOccurenceMonitor::class, 'slot_occurence_id');
     }
+
+    public function histories()
+    {
+        return $this->hasMany(SlotOccurenceHisto::class, 'slot_occurence_id')->latest();
+    }
+
+    public function cancellation()
+    {
+        return $this->hasOne(SlotOccurenceCancellation::class);
+    }
+
 }

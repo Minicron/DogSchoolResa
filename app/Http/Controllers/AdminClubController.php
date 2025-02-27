@@ -8,6 +8,7 @@ use App\Models\Club;
 use App\Models\Slot;
 use App\Models\User;
 use App\Models\UserInvitation;
+use App\Models\SlotOccurence;
 use Carbon\Carbon;
 
 class AdminClubController extends Controller
@@ -18,34 +19,33 @@ class AdminClubController extends Controller
      * @return \Illuminate\View\View
      */
     public function index()
-{
-    $club = auth()->user()->club;
+    {
+        $club = auth()->user()->club;
 
-    if (!$club) {
-        return redirect()->route('home')->with('error', 'Aucun club associé.');
+        if (!$club) {
+            return redirect()->route('home')->with('error', 'Aucun club associé.');
+        }
+
+        // Récupérer les informations nécessaires pour le Dashboard
+        $totalMembers = $club->members()->count();
+        $totalMonitors = $club->monitors()->count();
+        $totalSlots = $club->slots()->count();
+
+        // Filtrer les occurrences pour ne prendre que celles dans le futur
+        $nextOccurrencesQuery = $club->upcomingOccurrences()
+            ->whereDate('date', '>=', now()->format('Y-m-d'))
+            ->with(['slot'])
+            ->limit(9);
+
+        $nextOccurrences = $nextOccurrencesQuery->get()->sortBy(function($occurrence) {
+            return Carbon::createFromFormat('Y-m-d', $occurrence->date);
+        });
+
+        return view('AdminClub.dashboard', compact(
+            'club', 'totalMembers', 'totalMonitors', 'totalSlots', 'nextOccurrences'
+        ));
     }
 
-    // Récupérer les informations nécessaires pour le Dashboard
-    $totalMembers = $club->members()->count();
-    $totalMonitors = $club->monitors()->count();
-    $totalSlots = $club->slots()->count();
-
-    // Filtrer les occurrences pour ne prendre que celles dans le futur
-    $nextOccurrencesQuery = $club->upcomingOccurrences()
-        ->whereDate('date', '>=', now()->format('d-m-Y'))
-        ->with(['slot']);
-
-    $nbTotalOccurrence = $nextOccurrencesQuery->count(); // Nombre total d'occurrences futures
-    $nextOccurrences = $nextOccurrencesQuery->get()->sortBy(function($occurrence) {
-        return Carbon::createFromFormat('d-m-Y', $occurrence->date);
-    });
-
-    return view('AdminClub.dashboard', compact(
-        'club', 'totalMembers', 'totalMonitors', 'totalSlots', 'nextOccurrences', 'nbTotalOccurrence'
-    ));
-}
-
-    
     public function loadMoreOccurrences(Request $request)
     {
         $club = auth()->user()->club;
@@ -54,21 +54,20 @@ class AdminClubController extends Controller
             return response()->json(['error' => 'Aucun club associé.'], 403);
         }
 
-        $offset = $request->input('offset', 6); // Nombre d'occurrences déjà chargées
+
+        $offset = $request->input('offset', 9); // Nombre d'occurrences déjà chargées
         $limit = 6; // Nombre d'occurrences à charger par requête
 
         $nextOccurrences = $club->upcomingOccurrences()
             ->with(['slot'])
             ->get()
             ->sortBy(function($occurrence) {
-                return Carbon::createFromFormat('d-m-Y', $occurrence->date);
+                return Carbon::createFromFormat('Y-m-d', $occurrence->date);
             })
             ->slice($offset, $limit);
 
         return view('AdminClub.partials.occurrences', compact('nextOccurrences'))->render();
     }
-
-
 
     /**
      * Display the slots.
@@ -145,7 +144,6 @@ class AdminClubController extends Controller
             // Send the invitation email
             // TODO
 
-
             $members = User::where('club_id', $idClub)->get();    
             return view('AdminClub.members', ['members' => $members]);
         }
@@ -153,5 +151,14 @@ class AdminClubController extends Controller
         return view('User.invite' , ['idClub' => $idClub]);
     }
 
+    public function occurrenceHistory($id)
+    {
+        $occurence = SlotOccurence::with('histories')->find($id);
 
+        if (!$occurence) {
+            return response()->json(['error' => 'Occurence introuvable.'], 404);
+        }
+
+        return view('AdminClub.partials.occurence-history', compact('occurence'));
+    }
 }

@@ -10,6 +10,7 @@ use App\Models\Slot;
 use App\Models\SlotOccurence;
 use App\Models\SlotOccurenceAttendee;
 use App\Models\SlotOccurenceMonitor;
+use App\Models\SlotOccurenceHisto;
 
 class UserController extends Controller
 {
@@ -29,7 +30,8 @@ class UserController extends Controller
             // Get slot's futur occurences
             $slotOccurences = SlotOccurence::whereIn('slot_id', $slots->pluck('id'))
                 ->where('date', '>=', date('Y-m-d'))
-                ->orderBy('date', 'asc') 
+                ->orderBy('date', 'asc')
+                ->limit(6) 
                 ->get();
 
 
@@ -41,6 +43,8 @@ class UserController extends Controller
 
     public function register(SlotOccurence $slotOccurence)
     {
+        $user = auth()->user();
+
         // Vérifier si l'utilisateur est déjà inscrit comme moniteur
         $isRegisteredAsMonitor = SlotOccurenceMonitor::where('slot_occurence_id', $slotOccurence->id)
             ->where('user_id', auth()->id())
@@ -70,6 +74,13 @@ class UserController extends Controller
             'user_id' => auth()->id(),
         ]);
 
+        SlotOccurenceHisto::create([
+            'slot_occurence_id' => $slotOccurence->id,
+            'user_id' => auth()->id(),
+            'action' => SlotOccurenceHisto::ACTION_ATTENDEE_ADDED,
+            'details' => "Inscription de l'adhérent {$user->firstname} {$user->name}"
+        ]);
+
         return back()->with('success', 'Inscription réussie !');
     }
 
@@ -85,11 +96,20 @@ class UserController extends Controller
         // Supprimer l'inscription
         $attendee->delete();
 
+        SlotOccurenceHisto::create([
+            'slot_occurence_id' => $slotOccurence->id,
+            'user_id' => auth()->id(),
+            'action' => SlotOccurenceHisto::ACTION_ATTENDEE_REMOVED,
+            'details' => "Retrait de l'adhérent {$user->firstname} {$user->name}"
+        ]);
+
         return back()->with('success', 'Désinscription réussie.');
     }
 
     public function registerAsMonitor(SlotOccurence $slotOccurence)
     {
+        $user = auth()->user();
+
         // Vérifier si l'utilisateur est déjà inscrit comme membre
         $isRegisteredAsMember = SlotOccurenceAttendee::where('slot_occurence_id', $slotOccurence->id)
             ->where('user_id', auth()->id())
@@ -114,6 +134,13 @@ class UserController extends Controller
             'user_id' => auth()->id(),
         ]);
 
+        SlotOccurenceHisto::create([
+            'slot_occurence_id' => $slotOccurence->id,
+            'user_id' => auth()->id(),
+            'action' => SlotOccurenceHisto::ACTION_MONITOR_ASSIGNED,
+            'details' => "Inscription du moniteur {$user->firstname} {$user->name}"
+        ]);
+
         return back()->with('success', 'Inscription en tant que moniteur réussie !');
     }
 
@@ -128,6 +155,13 @@ class UserController extends Controller
 
         // Supprimer l'inscription
         $monitor->delete();
+
+        SlotOccurenceHisto::create([
+            'slot_occurence_id' => $slotOccurence->id,
+            'user_id' => auth()->id(),
+            'action' => SlotOccurenceHisto::ACTION_MONITOR_REMOVED,
+            'details' => "Retrait du moniteur {$user->firstname} {$user->name}"
+        ]);
 
         return back()->with('success', 'Désinscription en tant que moniteur réussie.');
     }

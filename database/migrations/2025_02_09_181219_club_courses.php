@@ -73,6 +73,23 @@ return new class extends Migration
             $table->timestamps();
         });
 
+        Schema::create('slot_occurence_histos', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('slot_occurence_id')->constrained('slot_occurences')->onDelete('cascade');
+            $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('set null');
+            $table->string('action');
+            $table->text('details')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('slot_occurence_cancellations', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('slot_occurence_id')->constrained('slot_occurences')->onDelete('cascade');
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->string('reason');
+            $table->timestamps();
+        });
+
         Schema::table('users', function (Blueprint $table) {
             $table->foreignId('club_id')->nullable()->constrained()->onDelete('cascade');
             $table->string('firstname');
@@ -148,6 +165,8 @@ return new class extends Migration
         Schema::dropIfExists('slot_occurence_attendees');
         Schema::dropIfExists('slot_occurence_monitors');
         Schema::dropIfExists('user_invitations');
+        Schema::dropIfExists('slot_occurence_histos');
+        Schema::dropIfExists('slot_occurence_cancellations');
         Schema::table('users', function (Blueprint $table) {
             $table->dropForeign(['club_id']);
             $table->dropColumn('club_id');

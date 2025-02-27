@@ -26,36 +26,13 @@
     <!-- Prochaines occurrences -->
     <div class="bg-[#FEFFFF] p-6 rounded-lg shadow-md mb-4">
         <h2 class="text-2xl font-semibold text-[#17252A] mb-3">Prochains créneaux</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            @forelse ($nextOccurrences as $occurrence)
-                <div class="bg-[#DEF2F1] text-[#17252A] p-4 rounded-lg shadow-md transition transform hover:scale-105 hover:shadow-lg relative">
-                    <div class="flex justify-between items-center">
-                        <h4 class="text-lg font-semibold">
-                            {{ \Carbon\Carbon::createFromFormat('d-m-Y', $occurrence->date)->locale('fr')->isoFormat('dddd D MMMM YYYY') }}
-                        </h4>
-                        <p class="text-sm text-gray-700 flex items-center">
-                            <i data-lucide="clock" class="w-4 h-4 mr-1"></i>{{ $occurrence->slot->start_time }}
-                        </p>
-                    </div>
-
-                    <div class="flex justify-between items-center mt-2 text-sm">
-                        <p class="font-medium">👥 Participants: {{ $occurrence->attendees()->count() }}</p>
-                        <span class="underline cursor-pointer text-[#2B7A78] font-bold"
-                              onmouseover="showMonitorsTooltip(event, {{ json_encode($occurrence->monitors->map(fn($m) => $m->user->firstname . ' ' . $m->user->name)->toArray(), JSON_HEX_APOS | JSON_HEX_QUOT) }})"
-                              onmouseout="hideMonitorsTooltip()">
-                            🎓 Moniteurs : {{ $occurrence->monitors()->count() }}
-                        </span>
-                    </div>
-                </div>
-            @empty
-                <p class="text-center text-gray-500">Aucune occurrence à venir.</p>
-            @endforelse
-        
-        </div>
         <div id="occurrences-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                
+            @foreach ($nextOccurrences as $occurrence)
+                @include('AdminClub.partials.slot_tile', ['slotOccurence' => $occurrence])
+            @endforeach
         </div>
-            <!-- Bouton "Voir plus" -->
+        
+        <!-- Bouton "Voir plus" -->
         <div class="mt-4 text-left">
             <button 
                 id="load-more-button"
@@ -106,22 +83,64 @@
 
     <!-- Contenu dynamique -->
     <div id="main-adminclub" class="mt-6"></div>
+
+    <!-- Tooltip Moniteurs -->
+    <div id="tooltip" class="hidden absolute bg-[#17252A] text-[#DEF2F1] text-sm rounded-lg px-3 py-2 shadow-lg transition-opacity duration-300"></div>
+
+    <!-- Modal d'annulation -->
+    <div id="cancel-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center transition-opacity duration-300">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-96">
+            <h2 class="text-xl font-semibold text-[#17252A] mb-3">Annuler une occurrence</h2>
+            <form id="cancel-form" method="POST" hx-post="" hx-target="" hx-swap="outerHTML" hx-on::after-request="closeCancelModal()">
+                @csrf
+                <input type="hidden" name="slot_occurence_id" id="slot-occurence-id">
+                
+                <label class="block text-sm font-medium text-gray-700">Raison :</label>
+                <select name="reason" class="w-full p-2 border rounded-lg mt-2">
+                    <option value="Météo défavorable">Météo défavorable</option>
+                    <option value="Manque de moniteurs">Manque de moniteurs</option>
+                    <option value="Autre">Autre</option>
+                </select>
+                
+                <button type="submit" class="mt-4 w-full bg-[#2B7A78] text-white font-semibold py-2 rounded-lg hover:bg-[#3AAFA9] transition">
+                    Confirmer l'annulation
+                </button>
+            </form>
+            <button onclick="closeCancelModal()" class="mt-2 w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition">
+                Fermer
+            </button>
+        </div>
+    </div>
 </div>
 
-<!-- Tooltip -->
-<div id="tooltip" class="hidden absolute bg-[#17252A] text-[#DEF2F1] text-sm rounded-lg px-3 py-2 shadow-lg transition-opacity duration-300"></div>
-
+<!-- Script -->
 <script src="https://unpkg.com/lucide@latest"></script>
 <script>
-    lucide.createIcons();
+
+    document.body.addEventListener('htmx:afterSwap', (event) => {
+        // On ne relance que pour le conteneur concerné
+        if (event.detail.target.id === "app") {
+            lucide.createIcons();
+        }
+    });
+
+    function openCancelModal(slotOccurenceId) {
+        document.getElementById('slot-occurence-id').value = slotOccurenceId;
+        const form = document.getElementById('cancel-form');
+        form.setAttribute('hx-post', `/admin-club/occurence/${slotOccurenceId}/cancel`);
+        form.setAttribute('hx-target', `#slot-${slotOccurenceId}`);
+        // Forcer htmx à reprocesser le formulaire afin de prendre en compte les nouveaux attributs
+        htmx.process(form);
+        document.getElementById('cancel-modal').classList.remove('hidden');
+    }
+
+    function closeCancelModal() {
+        document.getElementById('cancel-modal').classList.add('hidden');
+    }
 
     function showMonitorsTooltip(event, monitors) {
         const tooltip = document.getElementById('tooltip');
-        if (monitors.length === 0) {
-            tooltip.innerHTML = "Aucun moniteur inscrit";
-        } else {
-            tooltip.innerHTML = monitors.join("<br>");
-        }
+        tooltip.innerHTML = monitors.length === 0 ? "Aucun moniteur inscrit" : monitors.join("<br>");
         tooltip.style.left = `${event.pageX + 10}px`;
         tooltip.style.top = `${event.pageY - 40}px`;
         tooltip.classList.remove('hidden');

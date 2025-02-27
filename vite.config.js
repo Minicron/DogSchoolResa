@@ -11,6 +11,12 @@ export default defineConfig({
         strictPort: true,
         hmr: {
             host: 'dogschoolresa.test',
+        },
+        watch: {
+            // On ignore le dossier où Laravel compile les vues
+            ignored: [
+                '**/storage/framework/views/**'
+            ]
         }
     }
 });

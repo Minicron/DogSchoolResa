@@ -49,7 +49,7 @@ class GenerateSlotOccurences extends Command
             }
 
             // Add the days to the current date
-            $date = Carbon::now()->addDays($daysToAdd)->format('d-m-Y');
+            $date = Carbon::now()->addDays($daysToAdd)->format('Y-m-d');
 
             // Create the SlotOccurences
             for ($i = 0; $i < 8; $i++) {
@@ -61,7 +61,7 @@ class GenerateSlotOccurences extends Command
 
                 if ($occurence) {
                     $daysToAdd += 7;
-                    $date = Carbon::now()->addDays($daysToAdd)->format('d-m-Y');
+                    $date = Carbon::now()->addDays($daysToAdd)->format('Y-m-d');
                     continue;
                 }
 
@@ -75,7 +75,7 @@ class GenerateSlotOccurences extends Command
                 $slotOccurence->save();
 
                 $daysToAdd += 7;
-                $date = Carbon::now()->addDays($daysToAdd)->format('d-m-Y');
+                $date = Carbon::now()->addDays($daysToAdd)->format('Y-m-d');
             }
         }
 

@@ -16,11 +16,13 @@ class SlotController extends Controller
 
     public function new()
     {
+        
         if (auth()->user()->role != 'admin-club') {
             return redirect()->route('home');
         }
 
         if (request()->isMethod('post')) {
+
             $slot = new Slot();
             $slot->club_id = auth()->user()->club->id;
             $slot->name = request()->name;
@@ -37,7 +39,7 @@ class SlotController extends Controller
             return view('AdminClub.slots', ['slots' => $slots]);
         }
 
-        return view('slot.new');
+        return view('Slot.new');
     }
 
     /**

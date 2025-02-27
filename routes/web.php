@@ -36,6 +36,11 @@ Route::post('/club/create', [App\Http\Controllers\ClubController::class, 'create
 // ADMIN CLUB
 Route::get('/admin-club', [App\Http\Controllers\AdminClubController::class, 'index'])->name('admin-club.index');
 Route::get('/admin-club/more-occurences', [App\Http\Controllers\AdminClubController::class, 'loadMoreOccurrences'])->name('admin.club.loadMoreOccurrences');
+Route::get('/admin-club/occurrence-history/{id}', [App\Http\Controllers\AdminClubController::class, 'occurrenceHistory'])->name('admin.club.occurrenceHistory');
+Route::get('/admin-club/cancel-slot/{id}', [App\Http\Controllers\SlotOccurenceCancellationController::class, 'create'])->name('admin.club.cancelSlotOccurenceForm');
+Route::post('/admin-club/cancel-slot/{id}', [App\Http\Controllers\SlotOccurenceCancellationController::class, 'store'])->name('admin.club.cancelSlotOccurence');
+Route::post('/admin-club/occurence/{slotOccurence}/cancel', [App\Http\Controllers\SlotOccurenceCancellationController::class, 'store'])->name('admin.club.occurence.cancel');
+
 
 // --- ADMIN CLUB : SLOTS 
 Route::get('/admin-club/slots', [App\Http\Controllers\AdminClubController::class, 'slots'])->name('admin-club.slots');
@@ -44,6 +49,7 @@ Route::get('/admin-club/slots/delete/{id}', [App\Http\Controllers\SlotController
 Route::get('/admin-club/slots/edit/{id}', [App\Http\Controllers\SlotController::class, 'edit'])->name('admin-club.slots.edit');
 Route::post('/admin-club/slots/edit/{id}', [App\Http\Controllers\SlotController::class, 'edit'])->name('admin-club.slots.edit');
 Route::post('/admin-club/slots/new', [App\Http\Controllers\SlotController::class, 'new'])->name('admin-club.slots.new');
+
 // --- ADMIN CLUB : MEMBERS 
 Route::get('/admin-club/members', [App\Http\Controllers\AdminClubController::class, 'members'])->name('admin-club.members');
 Route::get('/admin-club/members/invite', [App\Http\Controllers\AdminClubController::class, 'invite'])->name('admin-club.members.invite');
