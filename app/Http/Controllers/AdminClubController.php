@@ -46,6 +46,144 @@ class AdminClubController extends Controller
         ));
     }
 
+    // Affiche la modal avec la liste des participants pour une occurrence donnée
+    public function participants($slotOccurrenceId)
+    {
+        $slotOccurrence = SlotOccurence::findOrFail($slotOccurrenceId);
+        // On récupère les adhérents inscrits (en supposant une relation 'attendees' sur SlotOccurence)
+        $participants = $slotOccurrence->attendees()->get();
+
+        return view('AdminClub.partials.participants_modal', [
+            'participants'   => $participants,
+            'slotOccurence'  => $slotOccurrence
+        ]);
+    }
+
+    public function whitelist($slotId)
+    {
+        $slot = Slot::findOrFail($slotId);
+
+        // Récupérer les membres du club de l'admin
+        $club = auth()->user()->club;
+        $members = $club->users; // Assurez-vous que la relation "members" est définie dans le modèle Club
+
+        return view('AdminClub.partials.whitelist_modal', [
+            'slot' => $slot,
+            'members' => $members,
+        ]);
+    }
+
+    public function addToWhitelist($slotId, $userId)
+    {
+        $slot = Slot::findOrFail($slotId);
+
+        // Ajoute le membre à la whitelist s'il n'y est pas déjà
+        \App\Models\RestrictedSlotWhitelist::firstOrCreate([
+            'slot_id' => $slotId,
+            'user_id' => $userId,
+        ]);
+
+        // Recharge la modale
+        $club = auth()->user()->club;
+        $members = $club->users;
+        return view('AdminClub.partials.whitelist_modal', [
+            'slot' => $slot,
+            'members' => $members,
+        ]);
+    }
+
+    public function removeFromWhitelist($slotId, $userId)
+    {
+        $slot = Slot::findOrFail($slotId);
+
+        // Recherche l'enregistrement dans la whitelist et le supprime s'il existe
+        $whitelistEntry = \App\Models\RestrictedSlotWhitelist::where('slot_id', $slotId)
+                            ->where('user_id', $userId)
+                            ->first();
+        if ($whitelistEntry) {
+            $whitelistEntry->delete();
+        }
+
+        // Recharge la modale mise à jour avec la liste des membres autorisés et disponibles
+        $club = auth()->user()->club;
+        $members = $club->users; // Assurez-vous que la relation "members" est définie dans le modèle Club
+
+        return view('AdminClub.partials.whitelist_modal', [
+            'slot'    => $slot,
+            'members' => $members,
+        ]);
+    }
+
+
+    public function exportWhitelist($slotId)
+    {
+        $slot = Slot::findOrFail($slotId);
+        $whitelist = $slot->whitelist()->with('user')->get();
+    
+        $filename = 'whitelist_' . $slotId . '.csv';
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        ];
+    
+        $columns = ['Nom', 'Prénom', 'Email', 'Date ajout'];
+        $callback = function() use ($whitelist, $columns) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, $columns);
+            foreach ($whitelist as $item) {
+                $date = \Carbon\Carbon::parse($item->created_at)
+                            ->locale('fr')->isoFormat('D MMMM YYYY, HH:mm');
+                $user = $item->user;
+                fputcsv($file, [
+                    $user ? $user->name : 'N/A',
+                    $user ? $user->firstname : 'N/A',
+                    $user ? $user->email : 'N/A',
+                    $date,
+                ]);
+            }
+            fclose($file);
+        };
+    
+        return response()->streamDownload($callback, $filename, $headers);
+    }   
+
+    // Export CSV des participants pour une occurrence donnée
+    public function exportParticipants($slotOccurrenceId)
+    {
+        $slotOccurrence = SlotOccurence::findOrFail($slotOccurrenceId);
+        // Charger la relation user pour chaque participant
+        $participants = $slotOccurrence->attendees()->with('user')->get();
+        
+        $filename = 'participants_' . $slotOccurrence->id . '.csv';
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        ];
+    
+        $columns = ['Nom', 'Prénom', 'Email', 'Date inscription'];
+        
+        $callback = function() use ($participants, $columns) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, $columns);
+            foreach ($participants as $participant) {
+                $user = $participant->user;
+                // Utiliser la propriété created_at du modèle SlotOccurenceAttendee directement
+                $dateInscription = \Carbon\Carbon::parse($participant->created_at)
+                                    ->locale('fr')->isoFormat('D MMMM YYYY, HH:mm');
+                fputcsv($file, [
+                    $user ? $user->name : 'N/A',
+                    $user ? $user->firstname : 'N/A',
+                    $user ? $user->email : 'N/A',
+                    $dateInscription
+                ]);
+            }
+            fclose($file);
+        };
+    
+        return response()->streamDownload($callback, $filename, $headers);
+    }
+    
+
     public function loadMoreOccurrences(Request $request)
     {
         $club = auth()->user()->club;

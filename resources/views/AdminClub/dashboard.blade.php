@@ -87,6 +87,9 @@
     <!-- Tooltip Moniteurs -->
     <div id="tooltip" class="hidden absolute bg-[#17252A] text-[#DEF2F1] text-sm rounded-lg px-3 py-2 shadow-lg transition-opacity duration-300"></div>
 
+    <!-- Conteneur de la modal pour les participants -->
+    <div id="participants-modal-container" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"></div>
+
     <!-- Modal d'annulation -->
     <div id="cancel-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center transition-opacity duration-300">
         <div class="bg-white p-6 rounded-lg shadow-lg w-96">
@@ -152,4 +155,12 @@
         tooltip.classList.add('hidden');
         tooltip.classList.remove('opacity-100');
     }
+
+    // Si on clique sur le conteneur modal (fond semi-transparent), on ferme la modal
+    document.getElementById('participants-modal-container').addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.classList.add('hidden');
+        }
+    });
+    
 </script>

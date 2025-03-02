@@ -28,12 +28,12 @@ class UserController extends Controller
             $slots = Slot::where('club_id', $club_id)->get();
 
             // Get slot's futur occurences
-            $slotOccurences = SlotOccurence::whereIn('slot_id', $slots->pluck('id'))
+            $slotOccurences = SlotOccurence::with('slot.whitelist')
+                ->whereIn('slot_id', $slots->pluck('id'))
                 ->where('date', '>=', date('Y-m-d'))
                 ->orderBy('date', 'asc')
-                ->limit(6) 
+                ->limit(6)
                 ->get();
-
 
             return view('home', ['club' => $club, 'slots' => $slots, 'slotOccurences' => $slotOccurences]);
         }
@@ -86,6 +86,8 @@ class UserController extends Controller
 
     public function unregister(SlotOccurence $slotOccurence)
     {
+        $user = auth()->user();
+
         // Vérifier si l'utilisateur est inscrit
         $attendee = $slotOccurence->attendees()->where('user_id', auth()->id())->first();
 
@@ -146,6 +148,8 @@ class UserController extends Controller
 
     public function unregisterAsMonitor(SlotOccurence $slotOccurence)
     {
+        $user = auth()->user();
+        
         // Vérifier si l'utilisateur est inscrit comme moniteur
         $monitor = $slotOccurence->monitors()->where('user_id', auth()->id())->first();
 

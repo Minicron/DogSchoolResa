@@ -40,6 +40,17 @@ Route::get('/admin-club/occurrence-history/{id}', [App\Http\Controllers\AdminClu
 Route::get('/admin-club/cancel-slot/{id}', [App\Http\Controllers\SlotOccurenceCancellationController::class, 'create'])->name('admin.club.cancelSlotOccurenceForm');
 Route::post('/admin-club/cancel-slot/{id}', [App\Http\Controllers\SlotOccurenceCancellationController::class, 'store'])->name('admin.club.cancelSlotOccurence');
 Route::post('/admin-club/occurence/{slotOccurence}/cancel', [App\Http\Controllers\SlotOccurenceCancellationController::class, 'store'])->name('admin.club.occurence.cancel');
+// Affichage de la modal des participants pour une occurrence donnée
+Route::get('/admin-club/slots/{slotOccurrence}/participants', [App\Http\Controllers\AdminClubController::class, 'participants'])->name('admin.club.slots.participants');
+// Export CSV de la liste des participants pour une occurrence donnée
+Route::get('/admin-club/slots/{slotOccurrence}/participants/export', [App\Http\Controllers\AdminClubController::class, 'exportParticipants'])->name('admin.club.slots.participants.export');
+// Afficher la modale de whitelist pour un slot donné
+Route::get('/admin-club/slots/{slot}/whitelist', [App\Http\Controllers\AdminClubController::class, 'whitelist'])->name('admin.club.slots.whitelist');
+// Ajouter un membre à la whitelist pour un slot donné
+Route::get('/admin-club/slots/{slot}/whitelist/add/{user}', [App\Http\Controllers\AdminClubController::class, 'addToWhitelist'])->name('admin.club.slots.whitelist.add');
+// Export CSV de la whitelist
+Route::get('/admin-club/slots/{slot}/whitelist/export', [App\Http\Controllers\AdminClubController::class, 'exportWhitelist'])->name('admin.club.slots.whitelist.export');
+Route::get('/admin-club/slots/{slot}/whitelist/remove/{user}', [App\Http\Controllers\AdminClubController::class, 'removeFromWhitelist'])->name('admin.club.slots.whitelist.remove');
 
 
 // --- ADMIN CLUB : SLOTS 

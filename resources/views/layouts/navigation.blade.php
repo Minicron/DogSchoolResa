@@ -30,10 +30,6 @@
                            hx-swap="innerHTML">
                            Admin Club
                         </a>
-                    @else
-                        <a href="{{ route('club.index') }}" class="text-[#DEF2F1] hover:text-[#3AAFA9] transition">
-                            Clubs
-                        </a>
                     @endif
                 </div>
             </div>
@@ -102,10 +98,6 @@
                    hx-target="#app" 
                    hx-swap="innerHTML">
                    Admin Club
-                </a>
-            @else
-                <a href="{{ route('club.index') }}" class="block text-[#DEF2F1] hover:text-[#3AAFA9] transition px-3 py-2 rounded-md">
-                    Clubs
                 </a>
             @endif
             @if (Auth::check())

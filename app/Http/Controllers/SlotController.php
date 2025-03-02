@@ -16,26 +16,28 @@ class SlotController extends Controller
 
     public function new()
     {
-        
         if (auth()->user()->role != 'admin-club') {
             return redirect()->route('home');
         }
 
         if (request()->isMethod('post')) {
-
             $slot = new Slot();
             $slot->club_id = auth()->user()->club->id;
             $slot->name = request()->name;
             $slot->description = request()->description;
             $slot->location = request()->location;
             $slot->day_of_week = request()->day_of_week;
+            // Les inputs du formulaire portent les noms "time_start" et "time_end"
             $slot->start_time = request()->time_start;
             $slot->end_time = request()->time_end;
             $slot->capacity = request()->capacity;
+            $slot->alert_monitors = request()->alert_monitors;
+            $slot->auto_close = request()->has('auto_close');
+            $slot->close_duration = $slot->auto_close ? request()->close_duration : null;
+            $slot->is_restricted = request()->has('is_restricted');
             $slot->save();
 
             $slots = Slot::all();
-
             return view('AdminClub.slots', ['slots' => $slots]);
         }
 

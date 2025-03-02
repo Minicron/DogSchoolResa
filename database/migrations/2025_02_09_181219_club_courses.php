@@ -34,6 +34,10 @@ return new class extends Migration
             $table->time('start_time');
             $table->time('end_time');
             $table->integer('capacity')->nullable();
+            $table->integer('alert_monitors')->nullable();
+            $table->boolean('auto_close')->default(false);
+            $table->integer('close_duration')->nullable();
+            $table->boolean('is_restricted')->default(false)->after('capacity');
             $table->timestamps();
         });
 
@@ -52,6 +56,13 @@ return new class extends Migration
             $table->foreignId('slot_occurence_id')->constrained()->onDelete('cascade');
             $table->timestamps();
         });
+
+        Schema::create('restricted_slot_whitelists', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('slot_id')->constrained()->onDelete('cascade');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->timestamps();
+        });        
         
         Schema::create('slot_occurence_monitors', function (Blueprint $table) {
             $table->id();
@@ -98,60 +109,6 @@ return new class extends Migration
             $table->boolean('is_active')->default(false);
         });
 
-        DB::table('users')->insert([
-            'name' => 'Montuy',
-            'firstname' => 'Alexis',
-            'email' => 'montuy.alexis@gmail.com',
-            'password' => bcrypt('mlknbv%%59BB'),
-            'role' => 'admin',
-            'created_at' => now(),
-            'updated_at' => now(),
-            'is_active' => true,
-        ]);
-
-        DB::table('clubs')->insert([
-            'name' => 'CEC Condat',
-            'city' => 'Condat',
-            'admin_id' => 1,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        DB::table('users')->insert([
-            'name' => 'Montuy',
-            'firstname' => 'Alexis',
-            'email' => 'montuy.alexis+adminclub@gmail.com',
-            'password' => bcrypt('mlknbv%%59BB'),
-            'role' => 'admin-club',
-            'created_at' => now(),
-            'updated_at' => now(),
-            'club_id' => 1,
-            'is_active' => true,
-        ]);
-
-        DB::table('users')->insert([
-            'name' => 'Montuy',
-            'firstname' => 'Alexis',
-            'email' => 'montuy.alexis+monitor@gmail.com',
-            'password' => bcrypt('mlknbv%%59BB'),
-            'role' => 'monitor',
-            'created_at' => now(),
-            'updated_at' => now(),
-            'club_id' => 1,
-            'is_active' => true,
-        ]);
-
-        DB::table('users')->insert([
-            'name' => 'Vieu',
-            'firstname' => 'Lauriane',
-            'email' => 'lauriane.vieu@gmail.com',
-            'password' => bcrypt('mlknbv%%59BB'),
-            'role' => 'member',
-            'created_at' => now(),
-            'updated_at' => now(),
-            'club_id' => 1,
-            'is_active' => true,
-        ]);
     }
 
     /**
@@ -167,6 +124,7 @@ return new class extends Migration
         Schema::dropIfExists('user_invitations');
         Schema::dropIfExists('slot_occurence_histos');
         Schema::dropIfExists('slot_occurence_cancellations');
+        Schema::dropIfExists('restricted_slot_whitelists');        
         Schema::table('users', function (Blueprint $table) {
             $table->dropForeign(['club_id']);
             $table->dropColumn('club_id');

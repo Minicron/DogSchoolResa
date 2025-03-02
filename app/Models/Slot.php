@@ -6,36 +6,38 @@ use Illuminate\Database\Eloquent\Model;
 
 class Slot extends Model
 {
-    
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'club_id',
         'name',
         'description',
         'location',
         'day_of_week',
-        'time_start',
-        'time_end',
+        'start_time',
+        'end_time',
         'capacity',
+        'alert_monitors',
+        'auto_close',
+        'close_duration',
+        'is_restricted',
     ];
 
-    /**
-     * Get the club that owns the course.
-     */
+    protected $casts = [
+        'is_restricted' => 'boolean',
+    ];
+
     public function club()
     {
         return $this->belongsTo(Club::class);
     }
 
-    /**
-     * Get the occurrences of the slot.
-     */
     public function occurrences()
     {
         return $this->hasMany(SlotOccurence::class);
+    }
+
+    // Nouvelle relation pour la whitelist
+    public function whitelist()
+    {
+        return $this->hasMany(RestrictedSlotWhitelist::class);
     }
 }
