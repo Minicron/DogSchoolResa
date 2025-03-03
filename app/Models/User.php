@@ -26,6 +26,7 @@ class User extends Authenticatable
         'club_id',
         'activation_token',
         'is_active',
+        'calendar_view'
     ];
 
     /**

@@ -37,7 +37,7 @@ return new class extends Migration
             $table->integer('alert_monitors')->nullable();
             $table->boolean('auto_close')->default(false);
             $table->integer('close_duration')->nullable();
-            $table->boolean('is_restricted')->default(false)->after('capacity');
+            $table->boolean('is_restricted')->default(false);
             $table->timestamps();
         });
 
@@ -107,6 +107,7 @@ return new class extends Migration
             $table->string('role')->default('user');
             $table->string('invitation_token')->nullable();
             $table->boolean('is_active')->default(false);
+            $table->boolean('calendar_view')->default(false);
         });
 
     }
