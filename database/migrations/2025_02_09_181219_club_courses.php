@@ -38,6 +38,15 @@ return new class extends Migration
             $table->boolean('auto_close')->default(false);
             $table->integer('close_duration')->nullable();
             $table->boolean('is_restricted')->default(false);
+            $table->boolean('has_groups')->default(false);
+            $table->timestamps();
+        });
+
+        Schema::create('slot_groups', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('slot_id')->constrained()->onDelete('cascade');
+            $table->string('name');
+            $table->integer('order')->default(0);
             $table->timestamps();
         });
 
@@ -119,6 +128,7 @@ return new class extends Migration
     {
         Schema::dropIfExists('clubs');
         Schema::dropIfExists('slots');
+        Schema::dropIfExists('slot_groups');
         Schema::dropIfExists('slot_occurences');
         Schema::dropIfExists('slot_occurence_attendees');
         Schema::dropIfExists('slot_occurence_monitors');

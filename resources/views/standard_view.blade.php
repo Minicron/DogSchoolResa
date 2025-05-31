@@ -2,15 +2,51 @@
 <div class="py-12">        
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <!-- Section header -->
-        <div class="bg-[#DEF2F1] p-6 rounded-lg shadow-lg mb-6">
-            <h3 class="text-xl font-semibold text-[#17252A]">Prochains rendez-vous</h3>
+        @if ($slotOccurences->isEmpty())
+            <div class="bg-[#DEF2F1] p-6 rounded-lg shadow-lg mb-6">
+                <h3 class="text-xl font-semibold text-[#17252A]">Aucun rendez-vous pour l'instant</h3>
+            </div>
+        @else
+            <div class="bg-[#DEF2F1] p-6 rounded-lg shadow-lg mb-6">
+                <h3 class="text-xl font-semibold text-[#17252A]">Prochains rendez-vous</h3>
+            </div>
+        @endif
+
+
+        <!-- Tooltip Moniteurs -->
+        <div id="tooltip" class="hidden absolute bg-[#17252A] text-[#DEF2F1] z-50 text-sm rounded-lg px-3 py-2 shadow-lg transition-opacity duration-300"></div>
+
+        <!-- Conteneur de la modal pour les participants -->
+        <div id="participants-modal-container" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"></div>
+
+        <!-- Modal d'annulation -->
+        <div id="cancel-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 hidden flex items-center justify-center transition-opacity duration-300">
+            <div class="bg-white p-6 rounded-lg shadow-lg w-96">
+                <h2 class="text-xl font-semibold text-[#17252A] mb-3">Annuler une occurrence</h2>
+                <form id="cancel-form" method="POST" hx-post="" hx-target="" hx-swap="outerHTML" hx-on::after-request="closeCancelModal()">
+                    @csrf
+                    <input type="hidden" name="slot_occurence_id" id="slot-occurence-id">
+                    
+                    <label class="block text-sm font-medium text-gray-700">Raison :</label>
+                    <select name="reason" class="w-full p-2 border rounded-lg mt-2">
+                        <option value="Météo défavorable">Météo défavorable</option>
+                        <option value="Manque de moniteurs">Manque de moniteurs</option>
+                        <option value="Autre">Autre</option>
+                    </select>
+                    
+                    <button type="submit" class="mt-4 w-full bg-[#2B7A78] text-white font-semibold py-2 rounded-lg hover:bg-[#3AAFA9] transition">
+                        Confirmer l'annulation
+                    </button>
+                </form>
+                <button onclick="closeCancelModal()" class="mt-2 w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition">
+                    Fermer
+                </button>
+            </div>
         </div>
 
-        <!-- Grid layout for the schedule slots -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6">
-            @foreach ($slotOccurences->sortBy(function($slotOccurence) {
-                return \Carbon\Carbon::createFromFormat('Y-m-d', $slotOccurence->date);
-            }) as $slotOccurence)
+        <!-- Prochaines occurrences -->
+        <div id="occurrences-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            @foreach ($nextOccurrences as $slotOccurence)
                 @php
                     // Filtrer les slots restreints
                     if ($slotOccurence->slot->is_restricted) {
@@ -30,121 +66,71 @@
                         }
                     }
                 @endphp
-
-                <div id="slot-{{ $slotOccurence->id }}" class="bg-[#FEFFFF] text-[#17252A] p-6 rounded-lg shadow-md transition transform hover:scale-105 hover:shadow-lg">
-                    <div class="flex justify-between items-center mb-4">
-                        <h4 class="text-lg font-semibold">
-                            {{ \Carbon\Carbon::parse($slotOccurence->date)->locale('fr')->isoFormat('dddd, D MMMM YYYY') }}
-                        </h4>
-                        <span class="text-xs bg-[#DEF2F1] text-[#17252A] rounded-full px-2 py-1">
-                            {{ $slotOccurence->slot->name }}
-                        </span>
-                    </div>
-
-                    <p class="text-sm text-gray-600 mb-2">
-                        Heure : De {{ $slotOccurence->slot->start_time }} à {{ $slotOccurence->slot->end_time }}
-                    </p>
-
-                    <div class="flex justify-between items-center text-sm">
-                        <p class="font-medium underline cursor-pointer"
-                            hx-get="/admin-club/slots/{{ $slotOccurence->id }}/participants"
-                            hx-target="#participants-modal-container"
-                            hx-swap="innerHTML">
-                            👥 Participants : {{ $slotOccurence->attendees()->count() }} / {{ $slotOccurence->slot->capacity }}
-                        </p>
-                        <span class="underline cursor-pointer text-[#2B7A78] font-bold"
-                                onmouseover="showMonitorsTooltip(event, {{ json_encode($slotOccurence->monitors->map(fn($m) => $m->user->firstname.' '.$m->user->name)->toArray(), JSON_HEX_APOS | JSON_HEX_QUOT) }})"
-                                onmouseout="hideMonitorsTooltip()">
-                            🎓 Moniteurs : {{ $slotOccurence->monitors()->count() }}
-                        </span>
-                    </div>
-
-                    @if (!is_null($slotOccurence->slot->alert_monitors) && $slotOccurence->monitors()->count() < $slotOccurence->slot->alert_monitors)
-                        <p class="mt-2 text-red-500 text-sm font-semibold">
-                            Attention : nombre de moniteurs insuffisant (minimum requis : {{ $slotOccurence->slot->alert_monitors }})
-                        </p>
-                    @endif
-
-                    @if ($slotOccurence->is_cancelled)
-                        <p class="mt-2 text-red-500 text-sm font-semibold">
-                            ❌ Annulé : {{ $slotOccurence->cancellation->reason }}
-                        </p>
-                    @else
-                        @if ($registrationClosed)
-                            <div class="p-4 bg-gray-200 rounded-lg text-center">
-                                <p class="text-red-600 font-bold">Inscription terminée</p>
-                                @if ($isRegisteredAsMember)
-                                    <p class="text-green-600 font-semibold mt-2">Vous êtes inscrit(e) en tant que membre</p>
-                                @else
-                                    <p class="text-gray-600 font-semibold mt-2">Vous ne vous êtes pas inscrit(e)</p>
-                                @endif
-                                @if ((Auth::user()->role == 'monitor' || Auth::user()->role == 'admin-club') && !$isRegisteredAsMonitor)
-                                    <form action="{{ route('slot.register.monitor', $slotOccurence->id) }}" method="POST" class="mt-4">
-                                        @csrf
-                                        <button type="submit" class="w-full bg-[#2B7A78] hover:bg-[#3AAFA9] text-white font-semibold py-2 rounded-lg transition">
-                                            S'inscrire en tant que moniteur
-                                        </button>
-                                    </form>
-                                @elseif ((Auth::user()->role == 'monitor' || Auth::user()->role == 'admin-club') && $isRegisteredAsMonitor)
-                                    <form action="{{ route('slot.unregister.monitor', $slotOccurence->id) }}" method="POST" class="mt-4">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="w-full bg-[#17252A] hover:bg-[#3AAFA9] text-white font-semibold py-2 rounded-lg transition">
-                                            Se désinscrire en tant que moniteur
-                                        </button>
-                                    </form>
-                                    <div class="absolute top-0 right-0 bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-bl-lg">
-                                        Inscrit en tant que moniteur
-                                    </div>
-                                @endif
-                            </div>
-                        @else
-                            <p class="mt-2 text-sm text-gray-600">
-                                Places disponibles : {{ $slotOccurence->slot->capacity - $slotOccurence->attendees()->count() }}
-                            </p>
-
-                            @if (!$isRegisteredAsMember && !$isRegisteredAsMonitor)
-                                <form action="{{ route('slot.register', $slotOccurence->id) }}" method="POST" class="mt-4">
-                                    @csrf
-                                    <button type="submit" class="w-full bg-[#2B7A78] hover:bg-[#3AAFA9] text-white font-semibold py-2 rounded-lg transition">
-                                        S'inscrire en tant que membre
-                                    </button>
-                                </form>
-                            @elseif ($isRegisteredAsMember)
-                                <form action="{{ route('slot.unregister', $slotOccurence->id) }}" method="POST" class="mt-4">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="w-full bg-[#17252A] hover:bg-[#3AAFA9] text-white font-semibold py-2 rounded-lg transition">
-                                        Se désinscrire en tant que membre
-                                    </button>
-                                </form>
-                                <div class="absolute top-0 right-0 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-bl-lg">
-                                    Inscrit en tant que membre
-                                </div>
-                            @endif
-
-                            @if ((Auth::user()->role == 'monitor' || Auth::user()->role == 'admin-club') && !$isRegisteredAsMonitor)
-                                <form action="{{ route('slot.register.monitor', $slotOccurence->id) }}" method="POST" class="mt-4">
-                                    @csrf
-                                    <button type="submit" class="w-full bg-[#2B7A78] hover:bg-[#3AAFA9] text-white font-semibold py-2 rounded-lg transition">
-                                        S'inscrire en tant que moniteur
-                                    </button>
-                                </form>
-                            @elseif ((Auth::user()->role == 'monitor' || Auth::user()->role == 'admin-club') && $isRegisteredAsMonitor)
-                                <form action="{{ route('slot.unregister.monitor', $slotOccurence->id) }}" method="POST" class="mt-4">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="w-full bg-[#17252A] hover:bg-[#3AAFA9] text-white font-semibold py-2 rounded-lg transition">
-                                        Se désinscrire en tant que moniteur
-                                    </button>
-                                </form>
-                                <div class="absolute top-0 right-0 bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-bl-lg">
-                                    Inscrit en tant que moniteur
-                                </div>
-                            @endif
-                        @endif
-                    @endif
-            </div>
-        @endforeach
+                @include('AdminClub.partials.slot_tile', ['slotOccurence' => $slotOccurence])
+            @endforeach
+        </div>
+        
+        <!-- Bouton "Voir plus" -->
+        <div class="mt-4 text-left">
+            <button 
+                id="load-more-button"
+                hx-get="{{ route('admin.club.loadMoreOccurrences') }}" 
+                hx-target="#occurrences-container" 
+                hx-swap="beforeend"
+                hx-trigger="click"
+                hx-vals='{"offset": 6}'
+                class="text-[#2B7A78] font-semibold hover:text-[#3AAFA9] transition"
+            >
+                Voir plus ⬇️
+            </button>           
+        </div>
     </div>
-</div> 
+</div>
+
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+
+    document.body.addEventListener('htmx:afterSwap', (event) => {
+        // On ne relance que pour le conteneur concerné
+        if (event.detail.target.id === "app") {
+            lucide.createIcons();
+        }
+    });
+
+    function openCancelModal(slotOccurenceId) {
+        document.getElementById('slot-occurence-id').value = slotOccurenceId;
+        const form = document.getElementById('cancel-form');
+        form.setAttribute('hx-post', `/admin-club/occurence/${slotOccurenceId}/cancel`);
+        form.setAttribute('hx-target', `#slot-${slotOccurenceId}`);
+        // Forcer htmx à reprocesser le formulaire afin de prendre en compte les nouveaux attributs
+        htmx.process(form);
+        document.getElementById('cancel-modal').classList.remove('hidden');
+    }
+
+    function closeCancelModal() {
+        document.getElementById('cancel-modal').classList.add('hidden');
+    }
+
+    function showMonitorsTooltip(event, monitors) {
+        const tooltip = document.getElementById('tooltip');
+        tooltip.innerHTML = monitors.length === 0 ? "Aucun moniteur inscrit" : monitors.join("<br>");
+        tooltip.style.left = `${event.pageX + 10}px`;
+        tooltip.style.top = `${event.pageY - 40}px`;
+        tooltip.classList.remove('hidden');
+        tooltip.classList.add('opacity-100');
+    }
+
+    function hideMonitorsTooltip() {
+        const tooltip = document.getElementById('tooltip');
+        tooltip.classList.add('hidden');
+        tooltip.classList.remove('opacity-100');
+    }
+
+    // Si on clique sur le conteneur modal (fond semi-transparent), on ferme la modal
+    document.getElementById('participants-modal-container').addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.classList.add('hidden');
+        }
+    });
+    
+</script>

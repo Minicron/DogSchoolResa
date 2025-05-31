@@ -29,8 +29,14 @@ class UserController extends Controller
 
             if (auth()->user()->calendar_view) {
                 // --- Logique de la vue calendrier ---
-                // Utiliser le mois passé en paramètre ou le mois courant
-                $month = $request->input('month', Carbon::now()->format('Y-m'));
+
+                // Si un mois est fourni via GET, on le stocke en session
+                if ($request->has('month')) {
+                    session(['calendar_month' => $request->input('month')]);
+                }
+
+                // Sinon on vérifie si un mois est en session
+                $month = session('calendar_month', Carbon::now()->format('Y-m'));
                 $startOfMonth = Carbon::parse($month . '-01')->startOfMonth();
                 $endOfMonth   = Carbon::parse($month . '-01')->endOfMonth();
 
@@ -76,17 +82,41 @@ class UserController extends Controller
                     'current_month'      => $current_month
                     // Vous pouvez ajouter d'autres variables spécifiques au calendrier ici
                 ]);
+
             } else {
+
                 // --- Vue standard ---
+                session()->forget('calendar_month');
+
+                // Récupérer les informations nécessaires pour le Dashboard
+                $totalMembers = $club->members()->count();
+                $totalMonitors = $club->monitors()->count();
+                $totalSlots = $club->slots()->count();
+
+                // Filtrer les occurrences pour ne prendre que celles dans le futur
+                $nextOccurrencesQuery = $club->upcomingOccurrences()
+                    ->whereDate('date', '>=', now()->format('Y-m-d'))
+                    ->with(['slot'])
+                    ->limit(9);
+
+                $nextOccurrences = $nextOccurrencesQuery->get()->sortBy(function($occurrence) {
+                    return Carbon::createFromFormat('Y-m-d', $occurrence->date);
+                });
+
                 $slotOccurences = SlotOccurence::with('slot.whitelist')
                     ->whereIn('slot_id', $slots->pluck('id'))
                     ->where('date', '>=', date('Y-m-d'))
                     ->orderBy('date', 'asc')
                     ->limit(6)
                     ->get();
+                
 
                 return view('home', [
                     'club'           => $club,
+                    'totalMembers'   => $totalMembers,
+                    'totalMonitors'  => $totalMonitors,
+                    'totalSlots'     => $totalSlots,
+                    'nextOccurrences'=> $slotOccurences,
                     'slots'          => $slots,
                     'slotOccurences' => $slotOccurences
                 ]);

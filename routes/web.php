@@ -69,11 +69,10 @@ Route::post('/admin-club/members/invite', [App\Http\Controllers\AdminClubControl
 
 // DASHBOARD USER
 Route::get('/clubs', [App\Http\Controllers\ClubController::class, 'index'])->name('club.index');
-
 Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
 Route::get('/calendar/event/{id}', [CalendarController::class, 'eventDetails'])->name('calendar.eventDetails');
+Route::get('/calendar/slot/{id}', [CalendarController::class, 'getSlotOccurenceDetail'])->name('calendar.getSlotOccurenceDetail');
 Route::post('/user/calendar_view_toggle', [UserController::class, 'toggleCalendarView'])->name('user.calendar_view.toggle');
-
 Route::post('/user/toggle-view', [UserController::class, 'toggleView'])->name('user.toggle_view');
 
 require __DIR__.'/auth.php';

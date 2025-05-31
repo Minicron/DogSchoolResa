@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\Slot;
 use App\Models\SlotOccurence;
 use App\Models\SlotOccurenceAttendee;
+use App\Models\SlotGroup;
+
 
 class SlotController extends Controller
 {
@@ -35,7 +37,21 @@ class SlotController extends Controller
             $slot->auto_close = request()->has('auto_close');
             $slot->close_duration = $slot->auto_close ? request()->close_duration : null;
             $slot->is_restricted = request()->has('is_restricted');
+            $slot->has_groups = request()->has('has_groups');
             $slot->save();
+
+            // Si des groupes ont été définis
+            if ($slot->has_groups && request()->has('groups')) {
+                foreach (request()->input('groups') as $index => $groupName) {
+                    if (!empty($groupName)) {
+                        SlotGroup::create([
+                            'slot_id' => $slot->id,
+                            'name'    => $groupName,
+                            'order'   => $index,
+                        ]);
+                    }
+                }
+            }
 
             $slots = Slot::all();
             return view('AdminClub.slots', ['slots' => $slots]);
@@ -90,6 +106,24 @@ class SlotController extends Controller
 
         if (request()->isMethod('post')) {
 
+            $slot->has_groups = request()->has('has_groups');
+            $slot->save();
+
+            // Supprimer les anciens groupes
+            $slot->slotGroups()->delete();
+
+            // Ajouter les nouveaux groupes si activés
+            if ($slot->has_groups && request()->has('groups')) {
+                foreach (request()->input('groups') as $index => $name) {
+                    if (trim($name) !== '') {
+                        $slot->slotGroups()->create([
+                            'name' => $name,
+                            'order' => $index,
+                        ]);
+                    }
+                }
+            }
+
             // Update the slot
             $slot->name = request()->name;
             $slot->description = request()->description;
@@ -108,6 +142,9 @@ class SlotController extends Controller
             return view('AdminClub.slots', ['slots' => $slots]);
         }
 
-        return view('slot.edit', ['slot' => $slot]);
+        return view('Slot.edit', [
+            'slot' => $slot, 
+            'groups' => $slot->slotGroups()->orderBy('order')->get()->pluck('name')->toArray()
+        ]);
     }
 }

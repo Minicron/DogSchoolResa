@@ -23,6 +23,7 @@ class Slot extends Model
 
     protected $casts = [
         'is_restricted' => 'boolean',
+        'has_groups' => 'boolean',
     ];
 
     public function club()
@@ -40,4 +41,10 @@ class Slot extends Model
     {
         return $this->hasMany(RestrictedSlotWhitelist::class);
     }
+
+    public function slotGroups()
+    {
+        return $this->hasMany(SlotGroup::class)->orderBy('order');
+    }
+
 }

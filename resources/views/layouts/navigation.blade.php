@@ -28,7 +28,7 @@
                            hx-get="/admin-club"
                            hx-target="#app" 
                            hx-swap="innerHTML">
-                           Admin Club
+                           Administration du club
                         </a>
                     @endif
                 </div>
@@ -40,7 +40,7 @@
                     <!-- Dropdown Profil -->
                     <div class="relative" x-data="{ profileOpen: false }">
                         <button @click="profileOpen = !profileOpen" class="flex items-center focus:outline-none focus:ring-2 focus:ring-[#3AAFA9] transition">
-                            <span class="text-[#DEF2F1] mr-2">{{ Auth::user()->firstname }}</span>
+                            <span class="text-[#DEF2F1] mr-2">{{ Auth::user()->firstname }} {{ Auth::user()->name }}</span>
                             <i data-lucide="user" class="h-8 w-8 text-[#DEF2F1]"></i>
                         </button>
                         <div x-show="profileOpen" @click.away="profileOpen = false" class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-[#FEFFFF] ring-1 ring-black ring-opacity-5">

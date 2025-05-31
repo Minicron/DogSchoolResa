@@ -1,7 +1,18 @@
 <div class="bg-[#17252A] shadow-md rounded-lg p-6 max-w-3xl mx-auto">
     <h2 class="text-2xl text-[#DEF2F1] font-bold mb-6">Nouveau cours</h2>
-    <form hx-post="/admin-club/slots/new" hx-target="#main-adminclub" hx-swap="innerHTML" 
-          x-data="{ autoClose: false }" class="space-y-4">
+    <form 
+        hx-post="/admin-club/slots/new" 
+        hx-target="#main-adminclub" 
+        hx-swap="innerHTML" 
+        x-data="{
+            autoClose: false,
+            hasGroups: false,
+            groups: [],
+            addGroup() { this.groups.push(''); },
+            removeGroup(index) { this.groups.splice(index, 1); }
+        }" 
+        class="space-y-4"
+    >
         @csrf
         <!-- Nom -->
         <div>
@@ -64,6 +75,35 @@
                 </label>
                 <input id="alert_monitors" name="alert_monitors" type="number"
                        class="mt-1 block w-full rounded bg-[#2B7A78] border border-[#22567d] focus:ring-[#3AAFA9] focus:border-[#3AAFA9] p-2 text-[#DEF2F1]" />
+            </div>
+        </div>
+
+        <!-- Groupes -->
+        <div class="space-y-2 mt-4">
+            <div class="flex items-center">
+                <input type="checkbox" id="has_groups" name="has_groups" x-model="hasGroups"
+                    class="h-4 w-4 rounded text-[#3AAFA9] focus:ring-[#3AAFA9] border-gray-300">
+                <label for="has_groups" class="ml-2 block text-sm font-medium text-[#DEF2F1]">
+                    Ce créneau comporte des sous-groupes
+                </label>
+            </div>
+
+            <div x-show="hasGroups" x-cloak class="mt-2 space-y-2">
+                <template x-for="(group, index) in groups" :key="index">
+                    <div class="flex gap-2">
+                        <input type="text" :name="'groups[' + index + ']'" x-model="groups[index]"
+                            class="w-full rounded bg-[#2B7A78] border border-[#22567d] 
+                                    focus:ring-[#3AAFA9] focus:border-[#3AAFA9] p-2 text-[#DEF2F1]"
+                            placeholder="Nom du groupe" />
+                        <button type="button" @click="removeGroup(index)" 
+                                class="text-red-500 hover:text-red-700 text-xl font-bold">&times;</button>
+                    </div>
+                </template>
+
+                <button type="button" @click="addGroup"
+                        class="text-sm font-semibold text-[#3AAFA9] hover:underline">
+                    + Ajouter un groupe
+                </button>
             </div>
         </div>
 

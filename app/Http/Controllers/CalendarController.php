@@ -14,8 +14,14 @@ class CalendarController extends Controller
      */
     public function index(Request $request)
     {
-        // Récupérer le mois demandé au format "YYYY-MM" ou utiliser le mois courant
-        $month = $request->input('month', Carbon::now()->format('Y-m'));
+        // Si un mois est fourni via GET, on le stocke en session
+        if ($request->has('month')) {
+            session(['calendar_month' => $request->input('month')]);
+        }
+
+        // Sinon on vérifie si un mois est en session
+        $month = session('calendar_month', Carbon::now()->format('Y-m'));
+
         $startOfMonth = Carbon::parse($month . '-01')->startOfMonth();
         $endOfMonth = Carbon::parse($month . '-01')->endOfMonth();
 
@@ -30,6 +36,7 @@ class CalendarController extends Controller
         $calendar_days = [];
         $current = $startOfMonth->copy()->startOfWeek();
         $endCalendar = $endOfMonth->copy()->endOfWeek();
+        
         while ($current->lte($endCalendar)) {
             // Filtrer les événements se produisant ce jour
             $events = $slotOccurences->filter(function ($occurrence) use ($current) {
@@ -63,5 +70,33 @@ class CalendarController extends Controller
     {
         $event = SlotOccurence::with('slot')->findOrFail($id);
         return view('partials.calendar_event_details', compact('event'));
+    }
+
+
+    public function getSlotOccurenceDetail($id)
+    {
+        $slotOccurence = SlotOccurence::with(['slot', 'attendees.user', 'monitors.user', 'cancellation'])->findOrFail($id);
+
+        // Prétraitements nécessaires (même logique que dans la vue standard)
+        $isRegisteredAsMember = $slotOccurence->attendees()->where('user_id', auth()->id())->exists();
+        $isRegisteredAsMonitor = $slotOccurence->monitors()->where('user_id', auth()->id())->exists();
+
+        $courseDateTime = Carbon::parse($slotOccurence->date . ' ' . $slotOccurence->slot->start_time);
+        $registrationClosed = false;
+
+        if ($slotOccurence->slot->auto_close && !is_null($slotOccurence->slot->close_duration)) {
+            $deadline = Carbon::now()->addHours($slotOccurence->slot->close_duration);
+            if ($deadline->greaterThan($courseDateTime)) {
+                $registrationClosed = true;
+            }
+        }
+
+        // Retour de la partial "slot_tile"
+        return view('AdminClub.partials.slot_tile', compact(
+            'slotOccurence',
+            'isRegisteredAsMember',
+            'isRegisteredAsMonitor',
+            'registrationClosed'
+        ));
     }
 }
