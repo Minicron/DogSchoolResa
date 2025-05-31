@@ -89,9 +89,9 @@ class UserController extends Controller
                 session()->forget('calendar_month');
 
                 // Récupérer les informations nécessaires pour le Dashboard
-                $totalMembers = $club->members()->count();
-                $totalMonitors = $club->monitors()->count();
-                $totalSlots = $club->slots()->count();
+                //$totalMembers = $club->members()->count();
+                //$totalMonitors = $club->monitors()->count();
+                //$totalSlots = $club->slots()->count();
 
                 // Filtrer les occurrences pour ne prendre que celles dans le futur
                 $nextOccurrencesQuery = $club->upcomingOccurrences()
@@ -107,15 +107,15 @@ class UserController extends Controller
                     ->whereIn('slot_id', $slots->pluck('id'))
                     ->where('date', '>=', date('Y-m-d'))
                     ->orderBy('date', 'asc')
-                    ->limit(6)
+                    ->limit(12)
                     ->get();
                 
 
                 return view('home', [
                     'club'           => $club,
-                    'totalMembers'   => $totalMembers,
-                    'totalMonitors'  => $totalMonitors,
-                    'totalSlots'     => $totalSlots,
+                    //'totalMembers'   => $totalMembers,
+                    //'totalMonitors'  => $totalMonitors,
+                    //'totalSlots'     => $totalSlots,
                     'nextOccurrences'=> $slotOccurences,
                     'slots'          => $slots,
                     'slotOccurences' => $slotOccurences

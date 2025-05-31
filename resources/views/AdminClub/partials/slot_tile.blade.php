@@ -52,10 +52,19 @@
         @endif
     </div>
 
+    @php
+
+        $courseDateTime = \Carbon\Carbon::parse($slotOccurence->date . ' ' . $slotOccurence->slot->start_time);
+        $isPassed = $courseDateTime->isPast();
+        
+    @endphp
+
     <!-- Boutons (en bas de la tuile) -->
     <div class="mt-4 space-y-2">
         @if (!$slotOccurence->is_cancelled)
-            @if ($registrationClosed)
+            @if ($isPassed)
+                <p class="text-center text-red-600 font-bold">Cours terminé</p>
+            @elseif ($registrationClosed)
                 <p class="text-center text-red-600 font-bold">Inscriptions clôturées</p>
             @else
                 @if (!$isRegisteredAsMember && !$isRegisteredAsMonitor)

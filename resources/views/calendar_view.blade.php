@@ -59,6 +59,8 @@
                                 continue;
                             }
                         }
+                        $courseDateTime = \Carbon\Carbon::parse($event->date . ' ' . $event->slot->start_time);
+                        $isPassed = $courseDateTime->isPast();
                     @endphp
                     @if ($event->is_cancelled)
                         <div class="mt-1 text-[10px] md:text-xs bg-red-100 text-blue-800 rounded px-1 py-0.5 cursor-pointer transition"
@@ -69,6 +71,15 @@
                         {{ \Carbon\Carbon::parse($event->slot->end_time)->format('G\hi') }}<br>
                         
                         <span class="text-red-800">Annulé</span>
+                    @elseif ($isPassed)
+                        <div class="mt-1 text-[10px] md:text-xs bg-gray-100 text-blue-800 rounded px-1 py-0.5 cursor-pointer transition"
+                            
+                        >
+                        {{ $event->slot->name }}<br>
+                        {{ \Carbon\Carbon::parse($event->slot->start_time)->format('G\hi') }} – 
+                        {{ \Carbon\Carbon::parse($event->slot->end_time)->format('G\hi') }}<br>
+                        
+                        <span class="text-red-800">Terminé</span>
                     @else
                         <div class="relative mt-1 text-[10px] md:text-xs bg-[#2B7A78] text-white rounded px-1 py-0.5 cursor-pointer hover:bg-[#3AAFA9] transition"
                             hx-get="/calendar/slot/{{ $event->id }}"

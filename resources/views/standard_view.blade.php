@@ -1,6 +1,9 @@
 <!-- Vue standard (grid) pour l'affichage des créneaux -->
 <div class="py-12">        
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="bg-[#DEF2F1] p-6 rounded-lg shadow-lg mb-6">
+            <h3 class="text-xl font-semibold text-[#17252A]">Bienvenue, {{ Auth::user()->firstname }}</h3>
+        </div>
         <!-- Section header -->
         @if ($slotOccurences->isEmpty())
             <div class="bg-[#DEF2F1] p-6 rounded-lg shadow-lg mb-6">
@@ -58,6 +61,7 @@
                     $isRegisteredAsMember = $slotOccurence->attendees()->where('user_id', auth()->id())->exists();
                     $isRegisteredAsMonitor = $slotOccurence->monitors()->where('user_id', auth()->id())->exists();
                     $courseDateTime = \Carbon\Carbon::parse($slotOccurence->date . ' ' . $slotOccurence->slot->start_time);
+                    $isPassed = $courseDateTime->isPast();
                     $registrationClosed = false;
                     if ($slotOccurence->slot->auto_close && !is_null($slotOccurence->slot->close_duration)) {
                         $deadline = \Carbon\Carbon::now()->addHours($slotOccurence->slot->close_duration);
