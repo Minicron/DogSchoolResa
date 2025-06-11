@@ -27,6 +27,17 @@ class UserController extends Controller
             // Récupérer les slots du club
             $slots = Slot::where('club_id', $club_id)->get();
 
+            $nextSlot = SlotOccurence::with('slot')
+                    ->whereIn('slot_id', $slots->pluck('id'))
+                    ->where('date', '>=', now()->format('Y-m-d'))
+                    ->where(function($q) {
+                        $q->whereHas('attendees', fn($q) => $q->where('user_id', auth()->id()))
+                        ->orWhereHas('monitors', fn($q) => $q->where('user_id', auth()->id()));
+                    })
+                    ->orderBy('date', 'asc')
+                    ->orderBy('slot_id', 'asc')
+                    ->first();
+
             if (auth()->user()->calendar_view) {
                 // --- Logique de la vue calendrier ---
 
@@ -79,6 +90,7 @@ class UserController extends Controller
                     'current_year'       => $current_year,
                     'prev_month'         => $prev_month,
                     'next_month'         => $next_month,
+                    'nextSlot'           => $nextSlot,
                     'current_month'      => $current_month
                     // Vous pouvez ajouter d'autres variables spécifiques au calendrier ici
                 ]);
@@ -118,6 +130,7 @@ class UserController extends Controller
                     //'totalSlots'     => $totalSlots,
                     'nextOccurrences'=> $slotOccurences,
                     'slots'          => $slots,
+                    'nextSlot'       => $nextSlot,
                     'slotOccurences' => $slotOccurences
                 ]);
             }

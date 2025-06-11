@@ -1,9 +1,10 @@
 <!-- Vue standard (grid) pour l'affichage des créneaux -->
 <div class="py-12">        
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-        <div class="bg-[#DEF2F1] p-6 rounded-lg shadow-lg mb-6">
-            <h3 class="text-xl font-semibold text-[#17252A]">Bienvenue, {{ Auth::user()->firstname }}</h3>
-        </div>
+
+        <!-- Section heropanel -->
+        @include('components.heropanel', ['nextSlot' => $nextSlot])
+
         <!-- Section header -->
         @if ($slotOccurences->isEmpty())
             <div class="bg-[#DEF2F1] p-6 rounded-lg shadow-lg mb-6">
@@ -14,7 +15,6 @@
                 <h3 class="text-xl font-semibold text-[#17252A]">Prochains rendez-vous</h3>
             </div>
         @endif
-
 
         <!-- Tooltip Moniteurs -->
         <div id="tooltip" class="hidden absolute bg-[#17252A] text-[#DEF2F1] z-50 text-sm rounded-lg px-3 py-2 shadow-lg transition-opacity duration-300"></div>

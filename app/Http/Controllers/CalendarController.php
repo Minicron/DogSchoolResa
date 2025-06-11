@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\SlotOccurence;
+use App\Models\Slot;
+use App\Models\Club;
 use Carbon\Carbon;
 
 class CalendarController extends Controller
@@ -21,6 +23,8 @@ class CalendarController extends Controller
 
         // Sinon on vérifie si un mois est en session
         $month = session('calendar_month', Carbon::now()->format('Y-m'));
+
+        
 
         $startOfMonth = Carbon::parse($month . '-01')->startOfMonth();
         $endOfMonth = Carbon::parse($month . '-01')->endOfMonth();
@@ -56,10 +60,25 @@ class CalendarController extends Controller
         $prev_month         = $startOfMonth->copy()->subMonth()->format('Y-m');
         $next_month         = $startOfMonth->copy()->addMonth()->format('Y-m');
         $current_month      = $startOfMonth->month;
+
+        $club_id = auth()->user()->club_id;
+        $club = Club::find($club_id);
+
+        $slots = Slot::where('club_id', $club_id)->get();
+        $nextSlot = SlotOccurence::with('slot')
+            ->whereIn('slot_id', $slots->pluck('id'))
+            ->where('date', '>=', now()->format('Y-m-d'))
+            ->where(function($q) {
+                $q->whereHas('attendees', fn($q) => $q->where('user_id', auth()->id()))
+                ->orWhereHas('monitors', fn($q) => $q->where('user_id', auth()->id()));
+            })
+            ->orderBy('date', 'asc')
+            ->orderBy('slot_id', 'asc')
+            ->first();
         
 
         return view('calendar_view', compact(
-            'calendar_days', 'current_month_name', 'current_year', 'prev_month', 'next_month', 'current_month'
+            'calendar_days', 'current_month_name', 'current_year', 'prev_month', 'next_month', 'current_month', 'nextSlot'
         ));
     }
 

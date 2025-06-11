@@ -12,19 +12,22 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // 1. Insertion de l'administrateur global (user #1)
+
         DB::table('users')->insert([
+            
+            // Erika
             [
                 'name'       => 'Montuy',
                 'firstname'  => 'Alexis',
                 'email'      => 'montuy.alexis@gmail.com',
-                'password'   => bcrypt('admin123'),
+                'password'   => bcrypt('test123'),
                 'role'       => 'admin',
                 'created_at' => now(),
                 'updated_at' => now(),
                 'is_active'  => true,
             ],
         ]);
+
 
         // 2. Création du club "CEC Condat"
         DB::table('clubs')->insert([
@@ -39,123 +42,157 @@ return new class extends Migration
 
         // 3. Insertion d'utilisateurs pour le club (club_id = 1)
         DB::table('users')->insert([
-            // Admin-club générique
+            
+            // Erika
             [
-                'name'       => 'AdminClub',
-                'firstname'  => 'Générique',
-                'email'      => 'adminclub.generic@gmail.com',
-                'password'   => bcrypt('adminclub123'),
+                'name'       => 'Aguiton',
+                'firstname'  => 'Erika',
+                'email'      => 'erikaaguiton@hotmail.fr',
+                'password'   => bcrypt('test123'),
                 'role'       => 'admin-club',
                 'created_at' => now(),
                 'updated_at' => now(),
-                'club_id'   => 1,
+                'club_id'    => 1,
                 'is_active'  => true,
             ],
             [
-                'name'       => 'Montuy',
-                'firstname'  => 'Alexis',
-                'email'      => 'montuy.alexis+adminclub@gmail.com',
-                'password'   => bcrypt('adminclub123'),
-                'role'       => 'admin-club',
+                'name'       => 'Aguiton',
+                'firstname'  => 'Erika',
+                'email'      => 'erikaaguiton+user@hotmail.fr',
+                'password'   => bcrypt('test123'),
+                'role'       => 'member',
                 'created_at' => now(),
                 'updated_at' => now(),
-                'club_id'   => 1,
+                'club_id'    => 1,
                 'is_active'  => true,
             ],
-            // Monitors
+
+            // Nadege
             [
-                'name'       => 'Montuy',
-                'firstname'  => 'Alexis',
-                'email'      => 'montuy.alexis+monitor@gmail.com',
-                'password'   => bcrypt('monitor123'),
+                'name'       => 'Gauvin',
+                'firstname'  => 'Nadege',
+                'email'      => 'nadegegauvin@hotmail.fr',
+                'password'   => bcrypt('test123'),
                 'role'       => 'monitor',
                 'created_at' => now(),
                 'updated_at' => now(),
-                'club_id'   => 1,
+                'club_id'    => 1,
                 'is_active'  => true,
             ],
             [
-                'name'       => 'Martin',
-                'firstname'  => 'Paul',
-                'email'      => 'paul.martin@gmail.com',
-                'password'   => bcrypt('monitor456'),
+                'name'       => 'Gauvin',
+                'firstname'  => 'Nadege',
+                'email'      => 'nadegegauvin+user@hotmail.fr',
+                'password'   => bcrypt('test123'),
+                'role'       => 'member',
+                'created_at' => now(),
+                'updated_at' => now(),
+                'club_id'    => 1,
+                'is_active'  => true,
+            ],
+
+            // Nathalie G.
+            [
+                'name'       => 'Gendre',
+                'firstname'  => 'Nathalie',
+                'email'      => 'pascalge87@gmail.com',
+                'password'   => bcrypt('test123'),
                 'role'       => 'monitor',
                 'created_at' => now(),
                 'updated_at' => now(),
-                'club_id'   => 1,
+                'club_id'    => 1,
                 'is_active'  => true,
             ],
             [
-                'name'       => 'Durand',
-                'firstname'  => 'Emma',
-                'email'      => 'emma.durand@gmail.com',
-                'password'   => bcrypt('monitor789'),
+                'name'       => 'Gendre',
+                'firstname'  => 'Nathalie',
+                'email'      => 'pascalge87+user@gmail.com',
+                'password'   => bcrypt('test123'),
+                'role'       => 'member',
+                'created_at' => now(),
+                'updated_at' => now(),
+                'club_id'    => 1,
+                'is_active'  => true,
+            ],
+
+            // Nathalie M.
+            [
+                'name'       => 'Maillet',
+                'firstname'  => 'Nathalie',
+                'email'      => 'nn.maillet@gmail.com',
+                'password'   => bcrypt('test123'),
                 'role'       => 'monitor',
                 'created_at' => now(),
                 'updated_at' => now(),
-                'club_id'   => 1,
-                'is_active'  => true,
-            ],
-            // Membres
-            [
-                'name'       => 'Vieu',
-                'firstname'  => 'Lauriane',
-                'email'      => 'lauriane.vieu@gmail.com',
-                'password'   => bcrypt('member123'),
-                'role'       => 'member',
-                'created_at' => now(),
-                'updated_at' => now(),
-                'club_id'   => 1,
+                'club_id'    => 1,
                 'is_active'  => true,
             ],
             [
-                'name'       => 'Dupont',
-                'firstname'  => 'Jean',
-                'email'      => 'jean.dupont@gmail.com',
-                'password'   => bcrypt('member456'),
+                'name'       => 'Maillet',
+                'firstname'  => 'Nathalie',
+                'email'      => 'nn.maillet+user@gmail.com',
+                'password'   => bcrypt('test123'),
                 'role'       => 'member',
                 'created_at' => now(),
                 'updated_at' => now(),
-                'club_id'   => 1,
+                'club_id'    => 1,
+                'is_active'  => true,
+            ],
+
+            // Antoine
+            [
+                'name'       => 'Lamotte',
+                'firstname'  => 'Antoine',
+                'email'      => 'antoine.lamotte01@gmail.com',
+                'password'   => bcrypt('test123'),
+                'role'       => 'monitor',
+                'created_at' => now(),
+                'updated_at' => now(),
+                'club_id'    => 1,
                 'is_active'  => true,
             ],
             [
-                'name'       => 'Petit',
-                'firstname'  => 'Clara',
-                'email'      => 'clara.petit@gmail.com',
-                'password'   => bcrypt('member789'),
+                'name'       => 'Lamotte',
+                'firstname'  => 'Antoine',
+                'email'      => 'antoine.lamotte01+user@gmail.com',
+                'password'   => bcrypt('test123'),
                 'role'       => 'member',
                 'created_at' => now(),
                 'updated_at' => now(),
-                'club_id'   => 1,
+                'club_id'    => 1,
+                'is_active'  => true,
+            ],
+
+            // Caroline
+            [
+                'name'       => 'Magnesse',
+                'firstname'  => 'Caroline',
+                'email'      => 'caroline.magnesse@gmail.com',
+                'password'   => bcrypt('test123'),
+                'role'       => 'monitor',
+                'created_at' => now(),
+                'updated_at' => now(),
+                'club_id'    => 1,
                 'is_active'  => true,
             ],
             [
-                'name'       => 'Roux',
-                'firstname'  => 'Pierre',
-                'email'      => 'pierre.roux@gmail.com',
-                'password'   => bcrypt('member321'),
+                'name'       => 'Magnesse',
+                'firstname'  => 'Caroline',
+                'email'      => 'caroline.magnesse+user@gmail.com',
+                'password'   => bcrypt('test123'),
                 'role'       => 'member',
                 'created_at' => now(),
                 'updated_at' => now(),
-                'club_id'   => 1,
+                'club_id'    => 1,
                 'is_active'  => true,
             ],
-            [
-                'name'       => 'Lemoine',
-                'firstname'  => 'Sophie',
-                'email'      => 'sophie.lemoine@gmail.com',
-                'password'   => bcrypt('member654'),
-                'role'       => 'member',
-                'created_at' => now(),
-                'updated_at' => now(),
-                'club_id'   => 1,
-                'is_active'  => true,
-            ],
+
+            // Valérie (aucun mail fourni)
+            // Tu pourras l'ajouter manuellement plus tard si nécessaire
         ]);
 
         // 4. Création de quelques slots pour le club "CEC Condat" (club_id = 1)
-        DB::table('slots')->insert([
+        /*DB::table('slots')->insert([
             [
                 'club_id'        => 1,
                 'name'           => 'Agility Débutant',
@@ -220,9 +257,9 @@ return new class extends Migration
                 'created_at'     => now(),
                 'updated_at'     => now(),
             ],
-        ]);
+        ]);*/
     }
-
+    
     /**
      * Reverse the migrations.
      */

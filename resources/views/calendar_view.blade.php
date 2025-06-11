@@ -1,5 +1,6 @@
 <div id="calendar-view" class="p-4">
     <!-- Navigation des mois -->
+    @include('components.heropanel', ['nextSlot' => $nextSlot])
     <div class="flex items-center justify-between mb-6">
         <button 
             class="flex items-center justify-center w-10 h-10 rounded-full bg-[#3AAFA9] text-white hover:bg-[#2B7A78] transition-colors" 
