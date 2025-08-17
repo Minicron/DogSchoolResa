@@ -11,179 +11,197 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Ajouter les champs manquants à la table users existante
-        Schema::table('users', function (Blueprint $table) {
-            if (!Schema::hasColumn('users', 'firstname')) {
-                $table->string('firstname')->after('name');
-            }
-            if (!Schema::hasColumn('users', 'club_id')) {
-                $table->foreignId('club_id')->nullable()->after('password');
-            }
-            if (!Schema::hasColumn('users', 'role')) {
-                $table->string('role')->default('user')->after('club_id');
-            }
-            if (!Schema::hasColumn('users', 'invitation_token')) {
-                $table->string('invitation_token')->nullable()->after('role');
-            }
-            if (!Schema::hasColumn('users', 'is_active')) {
-                $table->boolean('is_active')->default(false)->after('invitation_token');
-            }
-            if (!Schema::hasColumn('users', 'calendar_view')) {
-                $table->boolean('calendar_view')->default(false)->after('is_active');
-            }
+        // Table users avec tous les champs nécessaires
+        Schema::create('users', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('firstname');
+            $table->string('email')->unique();
+            $table->timestamp('email_verified_at')->nullable();
+            $table->string('password');
+            $table->string('role')->default('user');
+            $table->string('invitation_token')->nullable();
+            $table->boolean('is_active')->default(false);
+            $table->boolean('calendar_view')->default(false);
+            $table->rememberToken();
+            $table->timestamps();
+        });
+
+        // Table password_reset_tokens
+        Schema::create('password_reset_tokens', function (Blueprint $table) {
+            $table->string('email')->primary();
+            $table->string('token');
+            $table->timestamp('created_at')->nullable();
+        });
+
+        // Table sessions
+        Schema::create('sessions', function (Blueprint $table) {
+            $table->string('id')->primary();
+            $table->foreignId('user_id')->nullable()->index();
+            $table->string('ip_address', 45)->nullable();
+            $table->text('user_agent')->nullable();
+            $table->longText('payload');
+            $table->integer('last_activity')->index();
+        });
+
+        // Table cache
+        Schema::create('cache', function (Blueprint $table) {
+            $table->string('key')->primary();
+            $table->mediumText('value');
+            $table->integer('expiration');
+        });
+
+        // Table jobs
+        Schema::create('jobs', function (Blueprint $table) {
+            $table->bigIncrements('id');
+            $table->string('queue')->index();
+            $table->longText('payload');
+            $table->unsignedTinyInteger('attempts');
+            $table->unsignedInteger('reserved_at')->nullable();
+            $table->unsignedInteger('available_at');
+            $table->unsignedInteger('created_at');
+        });
+
+        // Table failed_jobs
+        Schema::create('failed_jobs', function (Blueprint $table) {
+            $table->id();
+            $table->string('uuid')->unique();
+            $table->text('connection');
+            $table->text('queue');
+            $table->longText('payload');
+            $table->longText('exception');
+            $table->timestamp('failed_at')->useCurrent();
         });
 
         // Table clubs
-        if (!Schema::hasTable('clubs')) {
-            Schema::create('clubs', function (Blueprint $table) {
-                $table->id();
-                $table->string('name');
-                $table->string('city');
-                $table->foreignId('admin_id')->constrained('users')->onDelete('cascade');
-                $table->text('affiliates')->nullable();
-                $table->text('logo')->nullable();
-                $table->text('description')->nullable();
-                $table->text('website')->nullable();
-                $table->text('facebook')->nullable();
-                $table->timestamps();
-            });
-        }
+        Schema::create('clubs', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('city');
+            $table->foreignId('admin_id')->constrained('users')->onDelete('cascade');
+            $table->text('affiliates')->nullable();
+            $table->text('logo')->nullable();
+            $table->text('description')->nullable();
+            $table->text('website')->nullable();
+            $table->text('facebook')->nullable();
+            $table->timestamps();
+        });
 
-        // Ajouter la contrainte de clé étrangère pour club_id
+        // Ajouter la clé étrangère club_id à la table users
         Schema::table('users', function (Blueprint $table) {
-            $table->foreign('club_id')->references('id')->on('clubs')->onDelete('cascade');
+            $table->foreignId('club_id')->nullable()->constrained()->onDelete('cascade');
         });
 
         // Table slots avec tous les champs
-        if (!Schema::hasTable('slots')) {
-            Schema::create('slots', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('club_id')->constrained()->onDelete('cascade');
-                $table->string('name');
-                $table->text('description')->nullable();
-                $table->text('location')->nullable();
-                $table->string('day_of_week');
-                $table->time('start_time');
-                $table->time('end_time');
-                $table->integer('capacity')->nullable();
-                $table->enum('capacity_type', ['none', 'fixed', 'dynamic'])->default('none');
-                $table->boolean('auto_close')->default(false);
-                $table->integer('close_duration')->nullable();
-                $table->boolean('is_restricted')->default(false);
-                $table->boolean('has_groups')->default(false);
-                $table->timestamps();
-            });
-        }
+        Schema::create('slots', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('club_id')->constrained()->onDelete('cascade');
+            $table->string('name');
+            $table->text('description')->nullable();
+            $table->text('location')->nullable();
+            $table->string('day_of_week');
+            $table->time('start_time');
+            $table->time('end_time');
+            $table->integer('capacity')->nullable();
+            $table->enum('capacity_type', ['none', 'fixed', 'dynamic'])->default('none');
+            $table->boolean('auto_close')->default(false);
+            $table->integer('close_duration')->nullable();
+            $table->boolean('is_restricted')->default(false);
+            $table->boolean('has_groups')->default(false);
+            $table->timestamps();
+        });
 
         // Table slot_groups
-        if (!Schema::hasTable('slot_groups')) {
-            Schema::create('slot_groups', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('slot_id')->constrained()->onDelete('cascade');
-                $table->string('name');
-                $table->integer('order')->default(0);
-                $table->timestamps();
-            });
-        }
+        Schema::create('slot_groups', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('slot_id')->constrained()->onDelete('cascade');
+            $table->string('name');
+            $table->integer('order')->default(0);
+            $table->timestamps();
+        });
 
         // Table slot_occurences avec tous les champs
-        if (!Schema::hasTable('slot_occurences')) {
-            Schema::create('slot_occurences', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('slot_id')->constrained()->onDelete('cascade');
-                $table->date('date');
-                $table->boolean('is_cancelled')->default(false);
-                $table->boolean('is_full')->default(false);
-                $table->boolean('closing_notification_sent')->default(false);
-                $table->timestamps();
-            });
-        }
+        Schema::create('slot_occurences', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('slot_id')->constrained()->onDelete('cascade');
+            $table->date('date');
+            $table->boolean('is_cancelled')->default(false);
+            $table->boolean('is_full')->default(false);
+            $table->boolean('closing_notification_sent')->default(false);
+            $table->timestamps();
+        });
 
         // Table slot_occurence_attendees
-        if (!Schema::hasTable('slot_occurence_attendees')) {
-            Schema::create('slot_occurence_attendees', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('user_id')->constrained()->onDelete('cascade');
-                $table->foreignId('slot_occurence_id')->constrained()->onDelete('cascade');
-                $table->timestamps();
-            });
-        }
+        Schema::create('slot_occurence_attendees', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('slot_occurence_id')->constrained()->onDelete('cascade');
+            $table->timestamps();
+        });
 
         // Table slot_occurence_monitors
-        if (!Schema::hasTable('slot_occurence_monitors')) {
-            Schema::create('slot_occurence_monitors', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('user_id')->constrained()->onDelete('cascade');
-                $table->foreignId('slot_occurence_id')->constrained()->onDelete('cascade');
-                $table->timestamps();
-            });
-        }
+        Schema::create('slot_occurence_monitors', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('slot_occurence_id')->constrained()->onDelete('cascade');
+            $table->timestamps();
+        });
 
         // Table restricted_slot_whitelists
-        if (!Schema::hasTable('restricted_slot_whitelists')) {
-            Schema::create('restricted_slot_whitelists', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('slot_id')->constrained()->onDelete('cascade');
-                $table->foreignId('user_id')->constrained()->onDelete('cascade');
-                $table->timestamps();
-            });
-        }
+        Schema::create('restricted_slot_whitelists', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('slot_id')->constrained()->onDelete('cascade');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->timestamps();
+        });
 
         // Table user_invitations
-        if (!Schema::hasTable('user_invitations')) {
-            Schema::create('user_invitations', function (Blueprint $table) {
-                $table->id();
-                $table->string('email');
-                $table->string('token');
-                $table->foreignId('club_id')->constrained()->onDelete('cascade');
-                $table->string('name');
-                $table->string('firstname');
-                $table->string('role');
-                $table->boolean('is_sent')->default(false);
-                $table->boolean('is_accepted')->default(false);
-                $table->timestamps();
-            });
-        }
+        Schema::create('user_invitations', function (Blueprint $table) {
+            $table->id();
+            $table->string('email');
+            $table->string('token');
+            $table->foreignId('club_id')->constrained()->onDelete('cascade');
+            $table->string('name');
+            $table->string('firstname');
+            $table->string('role');
+            $table->boolean('is_sent')->default(false);
+            $table->boolean('is_accepted')->default(false);
+            $table->timestamps();
+        });
 
         // Table slot_occurence_histos
-        if (!Schema::hasTable('slot_occurence_histos')) {
-            Schema::create('slot_occurence_histos', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('slot_occurence_id')->constrained('slot_occurences')->onDelete('cascade');
-                $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('set null');
-                $table->string('action');
-                $table->text('details')->nullable();
-                $table->timestamps();
-            });
-        }
+        Schema::create('slot_occurence_histos', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('slot_occurence_id')->constrained('slot_occurences')->onDelete('cascade');
+            $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('set null');
+            $table->string('action');
+            $table->text('details')->nullable();
+            $table->timestamps();
+        });
 
         // Table slot_occurence_cancellations
-        if (!Schema::hasTable('slot_occurence_cancellations')) {
-            Schema::create('slot_occurence_cancellations', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('slot_occurence_id')->constrained('slot_occurences')->onDelete('cascade');
-                $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-                $table->string('reason');
-                $table->timestamps();
-            });
-        }
+        Schema::create('slot_occurence_cancellations', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('slot_occurence_id')->constrained('slot_occurences')->onDelete('cascade');
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->string('reason');
+            $table->timestamps();
+        });
 
         // Table waiting_lists
-        if (!Schema::hasTable('waiting_lists')) {
-            Schema::create('waiting_lists', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('user_id')->constrained()->onDelete('cascade');
-                $table->foreignId('slot_occurence_id')->constrained()->onDelete('cascade');
-                $table->timestamp('joined_at')->useCurrent();
-                $table->boolean('is_notified')->default(false);
-                $table->timestamp('notified_at')->nullable();
-                $table->timestamps();
-                
-                // Index pour optimiser les requêtes
-                $table->index(['slot_occurence_id', 'joined_at']);
-                $table->unique(['user_id', 'slot_occurence_id']); // Un utilisateur ne peut être qu'une fois en liste d'attente pour une occurrence
-            });
-        }
+        Schema::create('waiting_lists', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('slot_occurence_id')->constrained()->onDelete('cascade');
+            $table->timestamp('joined_at')->useCurrent();
+            $table->boolean('is_notified')->default(false);
+            $table->timestamp('notified_at')->nullable();
+            $table->timestamps();
+            
+            // Index pour optimiser les requêtes
+            $table->index(['slot_occurence_id', 'joined_at']);
+            $table->unique(['user_id', 'slot_occurence_id']); // Un utilisateur ne peut être qu'une fois en liste d'attente pour une occurrence
+        });
     }
 
     /**
@@ -202,11 +220,11 @@ return new class extends Migration
         Schema::dropIfExists('slot_groups');
         Schema::dropIfExists('slots');
         Schema::dropIfExists('clubs');
-        
-        // Supprimer les colonnes ajoutées à la table users
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropForeign(['club_id']);
-            $table->dropColumn(['firstname', 'club_id', 'role', 'invitation_token', 'is_active', 'calendar_view']);
-        });
+        Schema::dropIfExists('failed_jobs');
+        Schema::dropIfExists('jobs');
+        Schema::dropIfExists('cache');
+        Schema::dropIfExists('sessions');
+        Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('users');
     }
 };

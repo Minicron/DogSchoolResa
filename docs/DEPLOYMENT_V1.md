@@ -101,12 +101,6 @@ Ajouter à la crontab :
 - **Site web** : https://ceccondat.e-monsite.com/
 - **Description** : Club d'Éducation Canine de Condat-Sur-Vienne
 
-### Créneaux d'exemple
-1. **Agility Débutant** - Lundi 18:00-19:30 (Capacité dynamique)
-2. **Agility Confirmé** - Lundi 19:30-21:00 (Capacité dynamique)
-3. **Éducation de Base** - Mercredi 18:00-19:30 (Capacité fixe: 8)
-4. **Obéissance** - Vendredi 19:00-20:30 (Capacité fixe: 6, Restreint)
-
 ## Fonctionnalités principales
 
 ### Gestion des capacités
