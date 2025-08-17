@@ -82,7 +82,7 @@ Ajouter à la crontab :
 - **Fonctionnalités** : Accès complet à toutes les fonctionnalités
 
 ### Administrateur Club
-- **Email** : `admin-club@ceccondat.fr`
+- **Email** : `montuy.alexis@gmail.com`
 - **Mot de passe** : `admin`
 - **Rôle** : `admin-club`
 - **Fonctionnalités** : Gestion des créneaux, des utilisateurs et des inscriptions
@@ -150,7 +150,7 @@ $user->password = Hash::make('nouveau_mot_de_passe_securise');
 $user->save();
 
 // Changer le mot de passe de l'admin club
-$user = \App\Models\User::where('email', 'admin-club@ceccondat.fr')->first();
+$user = \App\Models\User::where('email', 'montuy.alexis@gmail.com')->first();
 $user->password = Hash::make('nouveau_mot_de_passe_securise');
 $user->save();
 ```
@@ -190,6 +190,34 @@ php artisan slots:check-closing
 
 # Tester l'envoi d'emails
 php artisan test:email
+```
+
+## Résolution de problèmes
+
+### Problèmes de migrations
+Si vous rencontrez des erreurs lors des migrations :
+
+1. **Réinitialiser complètement** :
+```bash
+php artisan migrate:reset
+php artisan migrate
+```
+
+2. **Vérifier l'état des migrations** :
+```bash
+php artisan migrate:status
+```
+
+3. **Forcer les migrations** :
+```bash
+php artisan migrate --force
+```
+
+### Problèmes de permissions
+```bash
+# Corriger les permissions
+sudo chown -R www-data:www-data /path/to/DogSchoolResa
+sudo chmod -R 775 storage bootstrap/cache
 ```
 
 ## Support
