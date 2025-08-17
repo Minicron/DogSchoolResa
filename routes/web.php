@@ -13,6 +13,8 @@ Route::post('/slot/register/{slotOccurence}', [UserController::class, 'register'
 Route::delete('/slot/unregister/{slotOccurence}', [UserController::class, 'unregister'])->name('slot.unregister');
 Route::post('/slot/register/monitor/{slotOccurence}', [UserController::class, 'registerAsMonitor'])->name('slot.register.monitor');
 Route::delete('/slot/unregister/monitor/{slotOccurence}', [UserController::class, 'unregisterAsMonitor'])->name('slot.unregister.monitor');
+Route::post('/slot/waiting-list/{slotOccurence}', [UserController::class, 'addToWaitingList'])->name('slot.waiting-list.add');
+Route::delete('/slot/waiting-list/{slotOccurence}', [UserController::class, 'removeFromWaitingList'])->name('slot.waiting-list.remove');
 
 Route::get('/dashboard', function () {
     return view('home');
@@ -60,12 +62,16 @@ Route::get('/admin-club/slots/new', [App\Http\Controllers\SlotController::class,
 Route::get('/admin-club/slots/delete/{id}', [App\Http\Controllers\SlotController::class, 'delete'])->name('admin-club.slots.delete');
 Route::get('/admin-club/slots/edit/{id}', [App\Http\Controllers\SlotController::class, 'edit'])->name('admin-club.slots.edit');
 Route::post('/admin-club/slots/edit/{id}', [App\Http\Controllers\SlotController::class, 'edit'])->name('admin-club.slots.edit');
+Route::post('/admin-club/slots/edit-with-schedule-change/{id}', [App\Http\Controllers\SlotController::class, 'updateSlotWithScheduleChange'])->name('admin-club.slots.edit-with-schedule-change');
 Route::post('/admin-club/slots/new', [App\Http\Controllers\SlotController::class, 'new'])->name('admin-club.slots.new');
 
 // --- ADMIN CLUB : MEMBERS 
 Route::get('/admin-club/members', [App\Http\Controllers\AdminClubController::class, 'members'])->name('admin-club.members');
 Route::get('/admin-club/members/invite', [App\Http\Controllers\AdminClubController::class, 'invite'])->name('admin-club.members.invite');
 Route::post('/admin-club/members/invite', [App\Http\Controllers\AdminClubController::class, 'invite'])->name('admin-club.members.invite');
+Route::get('/admin-club/members/edit/{id}', [App\Http\Controllers\AdminClubController::class, 'editMember'])->name('admin-club.members.edit');
+Route::put('/admin-club/members/edit/{id}', [App\Http\Controllers\AdminClubController::class, 'updateMember'])->name('admin-club.members.update');
+Route::get('/admin-club/members/delete/{id}', [App\Http\Controllers\AdminClubController::class, 'deleteMember'])->name('admin-club.members.delete');
 
 // DASHBOARD USER
 Route::get('/clubs', [App\Http\Controllers\ClubController::class, 'index'])->name('club.index');

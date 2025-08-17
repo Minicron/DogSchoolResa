@@ -16,30 +16,65 @@
         </a>
     </div>
 
-    <div class="overflow-auto max-h-80">
-        <table class="min-w-full text-sm">
-            <thead>
-                <tr class="bg-gray-200">
-                    <th class="py-2 px-3 text-left">Nom</th>
-                    <th class="py-2 px-3 text-left">Prénom</th>
-                    <th class="py-2 px-3 text-left">Email</th>
-                    <th class="py-2 px-3 text-left">Date inscription</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach ($participants as $participant)
-                <tr class="border-b">
-                    <td class="py-2 px-3">{{ $participant->user->name }}</td>
-                    <td class="py-2 px-3">{{ $participant->user->firstname }}</td>
-                    <td class="py-2 px-3">{{ $participant->user->email }}</td>
-                    <td class="py-2 px-3">
-                        {{ \Carbon\Carbon::parse($participant->created_at)->locale('fr')->isoFormat('D MMMM YYYY, HH:mm') }}
-                    </td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
+    <!-- Participants inscrits -->
+    <div class="mb-6">
+        <h4 class="text-lg font-semibold mb-2 text-[#17252A]">👥 Participants inscrits ({{ $participants->count() }})</h4>
+        <div class="overflow-auto max-h-60">
+            <table class="min-w-full text-sm">
+                <thead>
+                    <tr class="bg-gray-200">
+                        <th class="py-2 px-3 text-left">Nom</th>
+                        <th class="py-2 px-3 text-left">Prénom</th>
+                        <th class="py-2 px-3 text-left">Email</th>
+                        <th class="py-2 px-3 text-left">Date inscription</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($participants as $participant)
+                    <tr class="border-b">
+                        <td class="py-2 px-3">{{ $participant->user->name }}</td>
+                        <td class="py-2 px-3">{{ $participant->user->firstname }}</td>
+                        <td class="py-2 px-3">{{ $participant->user->email }}</td>
+                        <td class="py-2 px-3">
+                            {{ \Carbon\Carbon::parse($participant->created_at)->locale('fr')->isoFormat('D MMMM YYYY, HH:mm') }}
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
     </div>
+
+    <!-- Liste d'attente -->
+    @if($waitingList->count() > 0)
+    <div class="mb-6">
+        <h4 class="text-lg font-semibold mb-2 text-orange-600">⏳ Liste d'attente ({{ $waitingList->count() }})</h4>
+        <div class="overflow-auto max-h-60">
+            <table class="min-w-full text-sm">
+                <thead>
+                    <tr class="bg-orange-100">
+                        <th class="py-2 px-3 text-left">Nom</th>
+                        <th class="py-2 px-3 text-left">Prénom</th>
+                        <th class="py-2 px-3 text-left">Email</th>
+                        <th class="py-2 px-3 text-left">Date d'ajout</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($waitingList as $waiting)
+                    <tr class="border-b">
+                        <td class="py-2 px-3">{{ $waiting->user->name }}</td>
+                        <td class="py-2 px-3">{{ $waiting->user->firstname }}</td>
+                        <td class="py-2 px-3">{{ $waiting->user->email }}</td>
+                        <td class="py-2 px-3">
+                            {{ \Carbon\Carbon::parse($waiting->joined_at)->locale('fr')->isoFormat('D MMMM YYYY, HH:mm') }}
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
 
     <!-- Bouton d'export CSV (en bas) -->
     <div class="flex justify-end mt-4">

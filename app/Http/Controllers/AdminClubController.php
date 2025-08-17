@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use App\Models\Club;
 use App\Models\Slot;
 use App\Models\User;
 use App\Models\UserInvitation;
 use App\Models\SlotOccurence;
+use App\Services\EmailService;
 use Carbon\Carbon;
 
 class AdminClubController extends Controller
@@ -37,9 +39,7 @@ class AdminClubController extends Controller
             ->with(['slot'])
             ->limit(9);
 
-        $nextOccurrences = $nextOccurrencesQuery->get()->sortBy(function($occurrence) {
-            return Carbon::createFromFormat('Y-m-d', $occurrence->date);
-        });
+        $nextOccurrences = $nextOccurrencesQuery->get()->sortBy('date');
 
         return view('AdminClub.dashboard', compact(
             'club', 'totalMembers', 'totalMonitors', 'totalSlots', 'nextOccurrences'
@@ -52,10 +52,12 @@ class AdminClubController extends Controller
         $slotOccurrence = SlotOccurence::findOrFail($slotOccurrenceId);
         // On récupère les adhérents inscrits (en supposant une relation 'attendees' sur SlotOccurence)
         $participants = $slotOccurrence->attendees()->get();
+        $waitingList = $slotOccurrence->waitingList()->with('user')->get();
 
         return view('AdminClub.partials.participants_modal', [
             'participants'   => $participants,
-            'slotOccurence'  => $slotOccurrence
+            'waitingList'    => $waitingList,
+            'slotOccurrence'  => $slotOccurrence
         ]);
     }
 
@@ -199,9 +201,7 @@ class AdminClubController extends Controller
         $nextOccurrences = $club->upcomingOccurrences()
             ->with(['slot'])
             ->get()
-            ->sortBy(function($occurrence) {
-                return Carbon::createFromFormat('Y-m-d', $occurrence->date);
-            })
+            ->sortBy('date')
             ->slice($offset, $limit);
 
         return view('AdminClub.partials.occurrences', compact('nextOccurrences'))->render();
@@ -240,7 +240,7 @@ class AdminClubController extends Controller
     }
 
     /**
-     * Display the members of a club
+     * Display the invitation form and handle invitation creation
      *
      * @return \Illuminate\View\View
      */
@@ -250,43 +250,104 @@ class AdminClubController extends Controller
             $idClub = Auth::user()->club_id;
         }
 
-        // Manage the user creation
+        // Handle the invitation creation
         if (request()->isMethod('post')) {
+            // Validate the request
+            request()->validate([
+                'name' => 'required|string|max:255',
+                'firstname' => 'required|string|max:255',
+                'email' => 'required|email|max:255',
+                'role' => 'required|in:user,monitor,admin-club',
+                'club_id' => 'required|exists:clubs,id'
+            ]);
 
             // Check if the user already exists
-            $user = User::where('email', request()->email)->first();
-            if ($user) {
+            $existingUser = User::where('email', request()->email)->first();
+            if ($existingUser) {
                 $tempUser = new User();
                 $tempUser->name = request()->name;
-                $tempUser->surname = request()->surname;
+                $tempUser->firstname = request()->firstname;
                 $tempUser->email = request()->email;
                 $tempUser->role = request()->role;
-                return view('User.invite' , ['idClub' => $idClub, 'user' => $tempUser, 'error' => 'EMAIL_ALREADY_EXISTS']);
+                return view('User.invite', ['idClub' => $idClub, 'user' => $tempUser, 'error' => 'EMAIL_ALREADY_EXISTS']);
             }
 
-            // Generate token for the invitation
-            $token = bin2hex(random_bytes(16));
+            // Check if an invitation already exists for this email
+            $existingInvitation = UserInvitation::where('email', request()->email)
+                ->where('club_id', $idClub)
+                ->where('is_accepted', false)
+                ->first();
+            
+            if ($existingInvitation) {
+                $tempUser = new User();
+                $tempUser->name = request()->name;
+                $tempUser->firstname = request()->firstname;
+                $tempUser->email = request()->email;
+                $tempUser->role = request()->role;
+                return view('User.invite', ['idClub' => $idClub, 'user' => $tempUser, 'error' => 'INVITATION_ALREADY_EXISTS']);
+            }
 
-            // Create the user entity
-            $userInvitation = New UserInvitation();
-            $userInvitation->name = request()->name;
-            $userInvitation->firstname = request()->firstname;
-            $userInvitation->email = request()->email;
-            $userInvitation->role = request()->role;
-            $userInvitation->club_id = $idClub;
-            $userInvitation->token = $token;
-            $userInvitation->is_sent = false;
-            $userInvitation->is_accepted = false;
-            $userInvitation->save();
+            try {
+                // Generate token for the invitation
+                $token = bin2hex(random_bytes(32));
 
-            // Send the invitation email
-            // TODO
+                // Create the invitation
+                $userInvitation = new UserInvitation();
+                $userInvitation->name = request()->name;
+                $userInvitation->firstname = request()->firstname;
+                $userInvitation->email = request()->email;
+                $userInvitation->role = request()->role;
+                $userInvitation->club_id = $idClub;
+                $userInvitation->token = $token;
+                $userInvitation->is_sent = false;
+                $userInvitation->is_accepted = false;
+                $userInvitation->save();
 
-            $members = User::where('club_id', $idClub)->get();    
-            return view('AdminClub.members', ['members' => $members]);
+                // Get the club information
+                $club = Club::find($idClub);
+
+                // Create a temporary user object for the email service
+                $invitedUser = new User([
+                    'name' => request()->name,
+                    'firstname' => request()->firstname,
+                    'email' => request()->email,
+                    'role' => request()->role
+                ]);
+
+                // Send the invitation email
+                $emailService = app(\App\Services\EmailService::class);
+                $emailSent = $emailService->sendUserInvitation($invitedUser, $token, $club);
+
+                if ($emailSent) {
+                    // Mark invitation as sent
+                    $userInvitation->is_sent = true;
+                    $userInvitation->save();
+                }
+
+                // Return to members list with success message
+                $members = User::where('club_id', $idClub)->get();
+                return view('AdminClub.members', [
+                    'members' => $members,
+                    'success' => 'Invitation envoyée avec succès à ' . request()->email
+                ]);
+
+            } catch (\Exception $e) {
+                // Log the error
+                \Log::error('Erreur lors de la création de l\'invitation', [
+                    'email' => request()->email,
+                    'error' => $e->getMessage()
+                ]);
+
+                $tempUser = new User();
+                $tempUser->name = request()->name;
+                $tempUser->firstname = request()->firstname;
+                $tempUser->email = request()->email;
+                $tempUser->role = request()->role;
+                return view('User.invite', ['idClub' => $idClub, 'user' => $tempUser, 'error' => 'INVITATION_ERROR']);
+            }
         }
 
-        return view('User.invite' , ['idClub' => $idClub]);
+        return view('User.invite', ['idClub' => $idClub]);
     }
 
     public function occurrenceHistory($id)
@@ -298,5 +359,126 @@ class AdminClubController extends Controller
         }
 
         return view('AdminClub.partials.occurence-history', compact('occurence'));
+    }
+
+    public function editMember($id)
+    {
+        $member = User::find($id);
+
+        if (!$member) {
+            return response()->json(['error' => 'Membre introuvable.'], 404);
+        }
+
+        // Vérifier que l'utilisateur connecté est admin du même club
+        if (Auth::user()->club_id !== $member->club_id) {
+            return response()->json(['error' => 'Accès non autorisé.'], 403);
+        }
+
+        return view('User.edit', compact('member'));
+    }
+
+    public function updateMember($id)
+    {
+        $member = User::find($id);
+
+        if (!$member) {
+            return response()->json(['error' => 'Membre introuvable.'], 404);
+        }
+
+        // Vérifier que l'utilisateur connecté est admin du même club
+        if (Auth::user()->club_id !== $member->club_id) {
+            return response()->json(['error' => 'Accès non autorisé.'], 403);
+        }
+
+        // Validation des données
+        request()->validate([
+            'name' => 'required|string|max:255',
+            'firstname' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email,' . $id,
+            'role' => 'required|in:user,monitor,admin-club',
+        ]);
+
+        try {
+            // Vérifier si l'email est déjà utilisé par un autre utilisateur
+            $existingUser = User::where('email', request()->email)
+                ->where('id', '!=', $id)
+                ->first();
+
+            if ($existingUser) {
+                return view('User.edit', [
+                    'member' => $member,
+                    'error' => 'Cette adresse email est déjà utilisée par un autre membre.'
+                ]);
+            }
+
+            // Mettre à jour le membre
+            $member->name = request()->name;
+            $member->firstname = request()->firstname;
+            $member->email = request()->email;
+            $member->role = request()->role;
+            $member->is_active = request()->has('is_active') ? 1 : 0;
+            $member->save();
+
+            // Retourner à la liste des membres avec un message de succès
+            $members = User::where('club_id', Auth::user()->club_id)->get();
+            return view('AdminClub.members', [
+                'members' => $members,
+                'success' => 'Membre modifié avec succès : ' . $member->firstname . ' ' . $member->name
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la modification du membre', [
+                'member_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+
+            return view('User.edit', [
+                'member' => $member,
+                'error' => 'Une erreur est survenue lors de la modification. Veuillez réessayer.'
+            ]);
+        }
+    }
+
+    public function deleteMember($id)
+    {
+        $member = User::find($id);
+
+        if (!$member) {
+            return response()->json(['error' => 'Membre introuvable.'], 404);
+        }
+
+        // Vérifier que l'utilisateur connecté est admin du même club
+        if (Auth::user()->club_id !== $member->club_id) {
+            return response()->json(['error' => 'Accès non autorisé.'], 403);
+        }
+
+        // Empêcher la suppression de soi-même
+        if (Auth::id() === $member->id) {
+            return response()->json(['error' => 'Vous ne pouvez pas supprimer votre propre compte.'], 403);
+        }
+
+        try {
+            $memberName = $member->firstname . ' ' . $member->name;
+            $member->delete();
+
+            // Retourner à la liste des membres avec un message de succès
+            $members = User::where('club_id', Auth::user()->club_id)->get();
+            return view('AdminClub.members', [
+                'members' => $members,
+                'success' => 'Membre supprimé avec succès : ' . $memberName
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la suppression du membre', [
+                'member_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+
+            $members = User::where('club_id', Auth::user()->club_id)->get();
+            return view('AdminClub.members', [
+                'members' => $members,
+                'error' => 'Une erreur est survenue lors de la suppression. Veuillez réessayer.'
+            ]);
+        }
     }
 }

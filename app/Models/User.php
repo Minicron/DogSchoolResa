@@ -85,6 +85,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Relation avec la liste d'attente
+     */
+    public function waitingList()
+    {
+        return $this->hasMany(WaitingList::class);
+    }
+
+    /**
      * Determine if the user is an admin.
      *
      * @return bool
@@ -104,5 +112,14 @@ class User extends Authenticatable
         return $this->role === 'member';
     }
 
-    
+    /**
+     * Send the password reset notification.
+     *
+     * @param  string  $token
+     * @return void
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new \App\Notifications\ResetPasswordNotification($token));
+    }
 }

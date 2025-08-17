@@ -26,13 +26,13 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
-
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
-        }
-
-        $request->user()->save();
+        $user = $request->user();
+        
+        // Mise à jour uniquement des champs autorisés (firstname et name)
+        $user->firstname = $request->validated('firstname');
+        $user->name = $request->validated('name');
+        
+        $user->save();
 
         return Redirect::route('profile.edit')->with('status', 'profile-updated');
     }
@@ -44,6 +44,9 @@ class ProfileController extends Controller
     {
         $request->validateWithBag('userDeletion', [
             'password' => ['required', 'current_password'],
+        ], [
+            'password.required' => 'Le mot de passe est obligatoire pour confirmer la suppression.',
+            'password.current_password' => 'Le mot de passe saisi est incorrect.',
         ]);
 
         $user = $request->user();

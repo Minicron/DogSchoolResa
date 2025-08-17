@@ -16,36 +16,36 @@
             </div>
         @endif
 
-        <!-- Tooltip Moniteurs -->
-        <div id="tooltip" class="hidden absolute bg-[#17252A] text-[#DEF2F1] z-50 text-sm rounded-lg px-3 py-2 shadow-lg transition-opacity duration-300"></div>
+        <!-- Tooltip Moniteurs - seulement pour les moniteurs et admins -->
+        @if (Auth::user()->role == 'monitor' || Auth::user()->role == 'admin-club')
+            <div id="tooltip" class="hidden absolute bg-[#17252A] text-[#DEF2F1] z-50 text-sm rounded-lg px-3 py-2 shadow-lg transition-opacity duration-300"></div>
+        @endif
 
         <!-- Conteneur de la modal pour les participants -->
         <div id="participants-modal-container" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"></div>
 
-        <!-- Modal d'annulation -->
-        <div id="cancel-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 hidden flex items-center justify-center transition-opacity duration-300">
-            <div class="bg-white p-6 rounded-lg shadow-lg w-96">
-                <h2 class="text-xl font-semibold text-[#17252A] mb-3">Annuler une occurrence</h2>
-                <form id="cancel-form" method="POST" hx-post="" hx-target="" hx-swap="outerHTML" hx-on::after-request="closeCancelModal()">
-                    @csrf
-                    <input type="hidden" name="slot_occurence_id" id="slot-occurence-id">
-                    
-                    <label class="block text-sm font-medium text-gray-700">Raison :</label>
-                    <select name="reason" class="w-full p-2 border rounded-lg mt-2">
-                        <option value="Météo défavorable">Météo défavorable</option>
-                        <option value="Manque de moniteurs">Manque de moniteurs</option>
-                        <option value="Autre">Autre</option>
-                    </select>
-                    
-                    <button type="submit" class="mt-4 w-full bg-[#2B7A78] text-white font-semibold py-2 rounded-lg hover:bg-[#3AAFA9] transition">
-                        Confirmer l'annulation
+        <!-- Modal d'annulation - seulement pour les admins -->
+        @if (Auth::user()->role == 'admin-club')
+            <div id="cancel-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Confirmer l'annulation</h3>
+                    <p class="text-gray-600 mb-4">Êtes-vous sûr de vouloir annuler ce cours ?</p>
+                    <form id="cancel-form" method="POST">
+                        @csrf
+                        @method('DELETE')
+                        <input type="hidden" id="slot-occurence-id" name="slot_occurence_id">
+                        <button type="submit" class="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 rounded-lg transition">
+                            Confirmer l'annulation
+                        </button>
+                    </form>
+                    <button onclick="closeCancelModal()" class="mt-2 w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition">
+                        Fermer
                     </button>
-                </form>
-                <button onclick="closeCancelModal()" class="mt-2 w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition">
-                    Fermer
-                </button>
+                </div>
             </div>
-        </div>
+        @endif
+
+
 
         <!-- Prochaines occurrences -->
         <div id="occurrences-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -60,15 +60,12 @@
                     }
                     $isRegisteredAsMember = $slotOccurence->attendees()->where('user_id', auth()->id())->exists();
                     $isRegisteredAsMonitor = $slotOccurence->monitors()->where('user_id', auth()->id())->exists();
-                    $courseDateTime = \Carbon\Carbon::parse($slotOccurence->date . ' ' . $slotOccurence->slot->start_time);
+                    $courseDateTime = $slotOccurence->date->copy()->setTimeFromTimeString($slotOccurence->slot->start_time);
                     $isPassed = $courseDateTime->isPast();
-                    $registrationClosed = false;
-                    if ($slotOccurence->slot->auto_close && !is_null($slotOccurence->slot->close_duration)) {
-                        $deadline = \Carbon\Carbon::now()->addHours($slotOccurence->slot->close_duration);
-                        if ($deadline->greaterThan($courseDateTime)) {
-                            $registrationClosed = true;
-                        }
-                    }
+                    
+                    // Utiliser les nouvelles méthodes du modèle pour la clôture des inscriptions
+                    $isRegistrationClosed = $slotOccurence->isRegistrationClosed();
+                    $registrationStatus = $slotOccurence->getRegistrationStatus();
                 @endphp
                 @include('AdminClub.partials.slot_tile', ['slotOccurence' => $slotOccurence])
             @endforeach
@@ -101,6 +98,7 @@
         }
     });
 
+    @if (Auth::user()->role == 'admin-club')
     function openCancelModal(slotOccurenceId) {
         document.getElementById('slot-occurence-id').value = slotOccurenceId;
         const form = document.getElementById('cancel-form');
@@ -114,7 +112,9 @@
     function closeCancelModal() {
         document.getElementById('cancel-modal').classList.add('hidden');
     }
+    @endif
 
+    @if (Auth::user()->role == 'monitor' || Auth::user()->role == 'admin-club')
     function showMonitorsTooltip(event, monitors) {
         const tooltip = document.getElementById('tooltip');
         tooltip.innerHTML = monitors.length === 0 ? "Aucun moniteur inscrit" : monitors.join("<br>");
@@ -129,6 +129,7 @@
         tooltip.classList.add('hidden');
         tooltip.classList.remove('opacity-100');
     }
+    @endif
 
     // Si on clique sur le conteneur modal (fond semi-transparent), on ferme la modal
     document.getElementById('participants-modal-container').addEventListener('click', function(e) {

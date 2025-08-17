@@ -15,6 +15,7 @@ class Slot extends Model
         'start_time',
         'end_time',
         'capacity',
+        'capacity_type',
         'alert_monitors',
         'auto_close',
         'close_duration',
@@ -24,6 +25,8 @@ class Slot extends Model
     protected $casts = [
         'is_restricted' => 'boolean',
         'has_groups' => 'boolean',
+        'auto_close' => 'boolean',
+        'close_duration' => 'integer',
     ];
 
     public function club()
@@ -46,5 +49,27 @@ class Slot extends Model
     {
         return $this->hasMany(SlotGroup::class)->orderBy('order');
     }
+
+    /**
+     * Calcule la capacité actuelle en fonction du type de capacité
+     */
+    public function getCurrentCapacity(?SlotOccurence $occurrence = null)
+    {
+        switch ($this->capacity_type) {
+            case 'none':
+                return null; // Pas de limite
+            case 'fixed':
+                return $this->capacity;
+            case 'dynamic':
+                if ($occurrence) {
+                    $monitorCount = $occurrence->monitors()->count();
+                    return $monitorCount * 5;
+                }
+                return 0;
+            default:
+                return $this->capacity;
+        }
+    }
+
 
 }

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use App\Models\UserInvitation;
 use App\Models\User;
 use App\Models\Club;
@@ -11,7 +13,9 @@ use App\Models\SlotOccurence;
 use App\Models\SlotOccurenceAttendee;
 use App\Models\SlotOccurenceMonitor;
 use App\Models\SlotOccurenceHisto;
+use App\Services\EmailService;
 use Carbon\Carbon;
+use App\Models\WaitingList;
 
 class UserController extends Controller
 {
@@ -111,9 +115,7 @@ class UserController extends Controller
                     ->with(['slot'])
                     ->limit(9);
 
-                $nextOccurrences = $nextOccurrencesQuery->get()->sortBy(function($occurrence) {
-                    return Carbon::createFromFormat('Y-m-d', $occurrence->date);
-                });
+                $nextOccurrences = $nextOccurrencesQuery->get()->sortBy('date');
 
                 $slotOccurences = SlotOccurence::with('slot.whitelist')
                     ->whereIn('slot_id', $slots->pluck('id'))
@@ -154,6 +156,11 @@ class UserController extends Controller
     {
         $user = auth()->user();
 
+        // Vérifier si les inscriptions sont closes
+        if ($slotOccurence->isRegistrationClosed()) {
+            return back()->with('error', 'Les inscriptions pour ce cours sont closes. Il n\'est plus possible de s\'inscrire.');
+        }
+
         // Vérifier si l'utilisateur est déjà inscrit comme moniteur
         $isRegisteredAsMonitor = SlotOccurenceMonitor::where('slot_occurence_id', $slotOccurence->id)
             ->where('user_id', auth()->id())
@@ -172,9 +179,20 @@ class UserController extends Controller
             return back()->with('error', 'Vous êtes déjà inscrit à ce créneau.');
         }
 
+        // Vérifier si l'utilisateur est déjà en liste d'attente
+        $waitingListService = app(\App\Services\WaitingListService::class);
+        if ($waitingListService->isUserWaiting($user, $slotOccurence)) {
+            return back()->with('error', 'Vous êtes déjà en liste d\'attente pour ce créneau.');
+        }
+
         // Vérifier si le créneau est complet
-        if ($slotOccurence->is_full) {
-            return back()->with('error', 'Ce créneau est complet.');
+        if ($slotOccurence->isFull()) {
+            // Ajouter en liste d'attente
+            if ($waitingListService->addToWaitingList($user, $slotOccurence)) {
+                return back()->with('success', 'Le cours est complet. Vous avez été ajouté en liste d\'attente. Vous recevrez un email dès qu\'une place se libère.');
+            } else {
+                return back()->with('error', 'Erreur lors de l\'ajout en liste d\'attente.');
+            }
         }
 
         // Enregistrer l'utilisateur comme participant à ce créneau
@@ -214,12 +232,73 @@ class UserController extends Controller
             'details' => "Retrait de l'adhérent {$user->firstname} {$user->name}"
         ]);
 
+        // Traiter la liste d'attente si des places se sont libérées
+        $waitingListService = app(\App\Services\WaitingListService::class);
+        $waitingListService->checkAndProcessWaitingList($slotOccurence);
+
         return back()->with('success', 'Désinscription réussie.');
+    }
+
+    /**
+     * Ajouter un utilisateur en liste d'attente
+     */
+    public function addToWaitingList(SlotOccurence $slotOccurence)
+    {
+        $user = auth()->user();
+
+        // Vérifier si l'utilisateur est déjà inscrit
+        $isAlreadyRegistered = SlotOccurenceAttendee::where('slot_occurence_id', $slotOccurence->id)
+            ->where('user_id', auth()->id())
+            ->exists();
+
+        if ($isAlreadyRegistered) {
+            return back()->with('error', 'Vous êtes déjà inscrit à ce créneau.');
+        }
+
+        // Vérifier si l'utilisateur est déjà en liste d'attente
+        $waitingListService = app(\App\Services\WaitingListService::class);
+        if ($waitingListService->isUserWaiting($user, $slotOccurence)) {
+            return back()->with('error', 'Vous êtes déjà en liste d\'attente pour ce créneau.');
+        }
+
+        // Ajouter en liste d'attente
+        if ($waitingListService->addToWaitingList($user, $slotOccurence)) {
+            return back()->with('success', 'Vous avez été ajouté en liste d\'attente. Vous recevrez un email dès qu\'une place se libère.');
+        } else {
+            return back()->with('error', 'Erreur lors de l\'ajout en liste d\'attente.');
+        }
+    }
+
+    /**
+     * Retirer un utilisateur de la liste d'attente
+     */
+    public function removeFromWaitingList(SlotOccurence $slotOccurence)
+    {
+        $user = auth()->user();
+
+        // Vérifier si l'utilisateur est en liste d'attente
+        $waitingListEntry = WaitingList::where('slot_occurence_id', $slotOccurence->id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$waitingListEntry) {
+            return back()->with('error', 'Vous n\'êtes pas en liste d\'attente pour ce créneau.');
+        }
+
+        // Supprimer de la liste d'attente
+        $waitingListEntry->delete();
+
+        return back()->with('success', 'Vous avez été retiré de la liste d\'attente.');
     }
 
     public function registerAsMonitor(SlotOccurence $slotOccurence)
     {
         $user = auth()->user();
+
+        // Vérifier si les inscriptions sont closes
+        if ($slotOccurence->isRegistrationClosed()) {
+            return back()->with('error', 'Les inscriptions pour ce cours sont closes. Il n\'est plus possible de s\'inscrire.');
+        }
 
         // Vérifier si l'utilisateur est déjà inscrit comme membre
         $isRegisteredAsMember = SlotOccurenceAttendee::where('slot_occurence_id', $slotOccurence->id)
@@ -252,6 +331,10 @@ class UserController extends Controller
             'details' => "Inscription du moniteur {$user->firstname} {$user->name}"
         ]);
 
+        // Traiter la liste d'attente si la capacité a augmenté (mode dynamique)
+        $waitingListService = app(\App\Services\WaitingListService::class);
+        $waitingListService->checkAndProcessWaitingList($slotOccurence);
+
         return back()->with('success', 'Inscription en tant que moniteur réussie !');
     }
 
@@ -276,37 +359,110 @@ class UserController extends Controller
             'details' => "Retrait du moniteur {$user->firstname} {$user->name}"
         ]);
 
+        // Vérifier la capacité dynamique et notifier les admins si nécessaire
+        $this->checkDynamicCapacityAndNotifyAdmins($slotOccurence);
+
+        // Traiter la liste d'attente si la capacité a diminué (mode dynamique)
+        $waitingListService = app(\App\Services\WaitingListService::class);
+        $waitingListService->checkAndProcessWaitingList($slotOccurence);
+
         return back()->with('success', 'Désinscription en tant que moniteur réussie.');
+    }
+
+    /**
+     * Vérifier la capacité dynamique et notifier les admins si nécessaire
+     */
+    private function checkDynamicCapacityAndNotifyAdmins(SlotOccurence $slotOccurence)
+    {
+        // Vérifier si c'est un slot avec capacité dynamique
+        if ($slotOccurence->slot->capacity_type !== 'dynamic') {
+            return;
+        }
+
+        $monitorCount = $slotOccurence->monitors()->count();
+        $attendeeCount = $slotOccurence->attendees()->count();
+        $newCapacity = $monitorCount * 5;
+
+        // Si on a plus de participants que la nouvelle capacité
+        if ($attendeeCount > $newCapacity) {
+            $excessCount = $attendeeCount - $newCapacity;
+            
+            // Notifier tous les admins du club
+            $club = $slotOccurence->slot->club;
+            $admins = User::where('club_id', $club->id)
+                ->whereIn('role', ['admin', 'admin-club', 'super_admin'])
+                ->get();
+
+            foreach ($admins as $admin) {
+                $admin->notify(new \App\Notifications\DynamicCapacityExceededNotification(
+                    $slotOccurence, 
+                    $monitorCount, 
+                    $attendeeCount, 
+                    $newCapacity,
+                    $excessCount
+                ));
+            }
+        }
     }
 
     public function registerFromMail($token = null)
     {
-        
         $userInvitation = UserInvitation::where('token', $token)->first();
 
         if (!$userInvitation) {
-            return redirect()->route('login');
+            return redirect()->route('login')->with('error', 'Lien d\'invitation invalide ou expiré.');
+        }
+
+        if ($userInvitation->is_accepted) {
+            return redirect()->route('login')->with('error', 'Cette invitation a déjà été utilisée.');
         }
 
         if (request()->isMethod('post')) {
+            // Validation des données
+            request()->validate([
+                'name' => 'required|string|max:255',
+                'firstname' => 'required|string|max:255',
+                'email' => 'required|email|max:255',
+                'password' => 'required|string|min:8|confirmed',
+            ]);
 
-            $user = new User();
-            $user->name = request()->name;
-            $user->firstname = request()->firstname;
-            $user->email = request()->email;
-            $user->password = bcrypt(request()->password);
-            $user->role = 'user';
-            $user->club_id = $userInvitation->club_id;
-            $user->is_active = 1;
-            $user->save();
+            // Vérifier que l'email correspond à l'invitation
+            if (request()->email !== $userInvitation->email) {
+                return back()->withErrors(['email' => 'L\'adresse email doit correspondre à celle de l\'invitation.']);
+            }
 
-            $userInvitation->is_accepted = true;
-            $userInvitation->save();
-            
-            return redirect()->route('login');
+            try {
+                // Créer l'utilisateur
+                $user = new User();
+                $user->name = request()->name;
+                $user->firstname = request()->firstname;
+                $user->email = request()->email;
+                $user->password = bcrypt(request()->password);
+                $user->role = $userInvitation->role; // Utiliser le rôle de l'invitation
+                $user->club_id = $userInvitation->club_id;
+                $user->is_active = 1;
+                $user->save();
+
+                // Marquer l'invitation comme acceptée
+                $userInvitation->is_accepted = true;
+                $userInvitation->save();
+
+                // Envoyer un email de bienvenue
+                $club = Club::find($userInvitation->club_id);
+                $emailService = app(\App\Services\EmailService::class);
+                $emailService->sendWelcomeEmail($user, $club);
+                
+                return redirect()->route('home')->with('success', 'Compte créé avec succès ! Vous pouvez maintenant vous connecter avec vos identifiants.');
+            } catch (\Exception $e) {
+                \Log::error('Erreur lors de la création du compte utilisateur', [
+                    'email' => request()->email,
+                    'error' => $e->getMessage()
+                ]);
+                
+                return back()->withErrors(['error' => 'Une erreur est survenue lors de la création du compte. Veuillez réessayer.']);
+            }
         }
 
         return view('auth.register', ['userInvitation' => $userInvitation]);
-        
     }
 }

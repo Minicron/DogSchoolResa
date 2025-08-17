@@ -100,7 +100,7 @@ class CalendarController extends Controller
         $isRegisteredAsMember = $slotOccurence->attendees()->where('user_id', auth()->id())->exists();
         $isRegisteredAsMonitor = $slotOccurence->monitors()->where('user_id', auth()->id())->exists();
 
-        $courseDateTime = Carbon::parse($slotOccurence->date . ' ' . $slotOccurence->slot->start_time);
+        $courseDateTime = $slotOccurence->date->copy()->setTimeFromTimeString($slotOccurence->slot->start_time);
         $registrationClosed = false;
 
         if ($slotOccurence->slot->auto_close && !is_null($slotOccurence->slot->close_duration)) {

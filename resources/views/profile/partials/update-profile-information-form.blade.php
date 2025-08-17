@@ -1,63 +1,87 @@
 <section>
-    <header>
-        <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-            {{ __('Profile Information') }}
-        </h2>
-
-        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            {{ __("Update your account's profile information and email address.") }}
+    <div class="mb-6">
+        <h4 class="text-lg font-medium text-gray-900 mb-2">
+            Modifier mes informations
+        </h4>
+        <p class="text-sm text-gray-600">
+            Mettez à jour vos informations personnelles. L'adresse email ne peut pas être modifiée pour des raisons de sécurité.
         </p>
-    </header>
+    </div>
 
-    <form id="send-verification" method="post" action="{{ route('verification.send') }}">
-        @csrf
-    </form>
-
-    <form method="post" action="{{ route('profile.update') }}" class="mt-6 space-y-6">
+    <form method="post" action="{{ route('profile.update') }}" class="space-y-6">
         @csrf
         @method('patch')
 
+        <!-- Prénom -->
         <div>
-            <x-input-label for="name" :value="__('Name')" />
-            <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $user->name)" required autofocus autocomplete="name" />
+            <label for="firstname" class="block text-sm font-medium text-gray-900 mb-1">Prénom</label>
+            <x-text-input 
+                id="firstname" 
+                name="firstname" 
+                type="text" 
+                class="mt-1 block w-full rounded border-gray-300 focus:border-[#3AAFA9] focus:ring-[#3AAFA9] p-2" 
+                :value="old('firstname', $user->firstname)" 
+                required 
+                autocomplete="given-name" 
+            />
+            <x-input-error class="mt-2" :messages="$errors->get('firstname')" />
+        </div>
+
+        <!-- Nom -->
+        <div>
+            <label for="name" class="block text-sm font-medium text-gray-900 mb-1">Nom</label>
+            <x-text-input 
+                id="name" 
+                name="name" 
+                type="text" 
+                class="mt-1 block w-full rounded border-gray-300 focus:border-[#3AAFA9] focus:ring-[#3AAFA9] p-2" 
+                :value="old('name', $user->name)" 
+                required 
+                autocomplete="family-name" 
+            />
             <x-input-error class="mt-2" :messages="$errors->get('name')" />
         </div>
 
+        <!-- Email (lecture seule) -->
         <div>
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" name="email" type="email" class="mt-1 block w-full" :value="old('email', $user->email)" required autocomplete="username" />
-            <x-input-error class="mt-2" :messages="$errors->get('email')" />
-
-            @if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! $user->hasVerifiedEmail())
-                <div>
-                    <p class="text-sm mt-2 text-gray-800 dark:text-gray-200">
-                        {{ __('Your email address is unverified.') }}
-
-                        <button form="send-verification" class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
-                            {{ __('Click here to re-send the verification email.') }}
-                        </button>
-                    </p>
-
-                    @if (session('status') === 'verification-link-sent')
-                        <p class="mt-2 font-medium text-sm text-green-600 dark:text-green-400">
-                            {{ __('A new verification link has been sent to your email address.') }}
-                        </p>
-                    @endif
+            <label for="email" class="block text-sm font-medium text-gray-900 mb-1">Adresse email</label>
+            <div class="mt-1 relative">
+                <x-text-input 
+                    id="email" 
+                    name="email" 
+                    type="email" 
+                    class="block w-full rounded bg-gray-50 border-gray-300 text-gray-500 cursor-not-allowed p-2" 
+                    :value="$user->email" 
+                    disabled 
+                    readonly
+                />
+                <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                    <i data-lucide="lock" class="w-5 h-5 text-gray-400"></i>
                 </div>
-            @endif
+            </div>
+            <p class="mt-2 text-sm text-gray-500">
+                L'adresse email ne peut pas être modifiée. Contactez l'administrateur si nécessaire.
+            </p>
         </div>
 
+        <!-- Bouton de sauvegarde -->
         <div class="flex items-center gap-4">
-            <x-primary-button>{{ __('Save') }}</x-primary-button>
+            <x-primary-button class="bg-[#2B7A78] hover:bg-[#3AAFA9] focus:ring-[#3AAFA9] border-transparent">
+                <i data-lucide="check" class="w-4 h-4 mr-2"></i>
+                Enregistrer les modifications
+            </x-primary-button>
 
             @if (session('status') === 'profile-updated')
-                <p
+                <div
                     x-data="{ show: true }"
                     x-show="show"
                     x-transition
-                    x-init="setTimeout(() => show = false, 2000)"
-                    class="text-sm text-gray-600 dark:text-gray-400"
-                >{{ __('Saved.') }}</p>
+                    x-init="setTimeout(() => show = false, 3000)"
+                    class="flex items-center text-sm text-green-600"
+                >
+                    <i data-lucide="check-circle" class="w-4 h-4 mr-1"></i>
+                    Modifications enregistrées avec succès !
+                </div>
             @endif
         </div>
     </form>

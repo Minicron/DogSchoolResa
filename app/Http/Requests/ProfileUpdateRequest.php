@@ -16,15 +16,26 @@ class ProfileUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'firstname' => ['required', 'string', 'max:255'],
             'name' => ['required', 'string', 'max:255'],
-            'email' => [
-                'required',
-                'string',
-                'lowercase',
-                'email',
-                'max:255',
-                Rule::unique(User::class)->ignore($this->user()->id),
-            ],
+            // L'email n'est plus modifiable, donc on ne le valide pas
+        ];
+    }
+
+    /**
+     * Get custom messages for validator errors.
+     *
+     * @return array
+     */
+    public function messages(): array
+    {
+        return [
+            'firstname.required' => 'Le prénom est obligatoire.',
+            'firstname.string' => 'Le prénom doit être une chaîne de caractères.',
+            'firstname.max' => 'Le prénom ne peut pas dépasser 255 caractères.',
+            'name.required' => 'Le nom est obligatoire.',
+            'name.string' => 'Le nom doit être une chaîne de caractères.',
+            'name.max' => 'Le nom ne peut pas dépasser 255 caractères.',
         ];
     }
 }

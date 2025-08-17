@@ -7,6 +7,7 @@
         x-data="{
             autoClose: false,
             hasGroups: false,
+            capacityType: 'none',
             groups: [],
             addGroup() { this.groups.push(''); },
             removeGroup(index) { this.groups.splice(index, 1); }
@@ -62,19 +63,57 @@
                       class="mt-1 block w-full rounded bg-[#2B7A78] border border-[#22567d] focus:ring-[#3AAFA9] focus:border-[#3AAFA9] p-2 text-[#DEF2F1]"></textarea>
         </div>
 
-        <!-- Grille: Capacité & Alerte moniteurs -->
-        <div class="grid grid-cols-2 gap-4">
+        <!-- Gestion de la capacité -->
+        <div class="space-y-4">
             <div>
-                <label for="capacity" class="block text-sm font-medium text-[#DEF2F1]">Capacité</label>
-                <input id="capacity" name="capacity" type="number" required
-                       class="mt-1 block w-full rounded bg-[#2B7A78] border border-[#22567d] focus:ring-[#3AAFA9] focus:border-[#3AAFA9] p-2 text-[#DEF2F1]" />
+                <label class="block text-sm font-medium text-[#DEF2F1] mb-2">Gestion de la capacité</label>
+                
+                <!-- Option 1: Pas de limite -->
+                <div class="flex items-center mb-3">
+                    <input type="radio" id="capacity_none" name="capacity_type" value="none" x-model="capacityType"
+                           class="h-4 w-4 text-[#3AAFA9] focus:ring-[#3AAFA9] border-gray-300">
+                    <label for="capacity_none" class="ml-2 block text-sm text-[#DEF2F1]">
+                        <strong>Aucune limite</strong> - Le cours peut accepter un nombre illimité de participants
+                    </label>
+                </div>
+                
+                <!-- Option 2: Limite fixe -->
+                <div class="flex items-center mb-3">
+                    <input type="radio" id="capacity_fixed" name="capacity_type" value="fixed" x-model="capacityType"
+                           class="h-4 w-4 text-[#3AAFA9] focus:ring-[#3AAFA9] border-gray-300">
+                    <label for="capacity_fixed" class="ml-2 block text-sm text-[#DEF2F1]">
+                        <strong>Limite fixe</strong> - Définir un nombre maximum de participants
+                    </label>
+                </div>
+                
+                <!-- Option 3: Limite dynamique -->
+                <div class="flex items-center mb-3">
+                    <input type="radio" id="capacity_dynamic" name="capacity_type" value="dynamic" x-model="capacityType"
+                           class="h-4 w-4 text-[#3AAFA9] focus:ring-[#3AAFA9] border-gray-300">
+                    <label for="capacity_dynamic" class="ml-2 block text-sm text-[#DEF2F1]">
+                        <strong>Limite dynamique</strong> - La capacité dépend du nombre de moniteurs (× 5)
+                    </label>
+                </div>
             </div>
-            <div>
-                <label for="alert_monitors" class="block text-sm font-medium text-[#DEF2F1]">
-                    Alerter si le nombre de moniteurs est inférieur à
-                </label>
-                <input id="alert_monitors" name="alert_monitors" type="number"
-                       class="mt-1 block w-full rounded bg-[#2B7A78] border border-[#22567d] focus:ring-[#3AAFA9] focus:border-[#3AAFA9] p-2 text-[#DEF2F1]" />
+            
+            <!-- Champs conditionnels -->
+            <div x-show="capacityType === 'fixed'" class="ml-6">
+                <label for="capacity" class="block text-sm font-medium text-[#DEF2F1]">Nombre maximum de participants</label>
+                <input id="capacity" name="capacity" type="number" min="1" x-bind:required="capacityType === 'fixed'"
+                       class="mt-1 block w-full rounded bg-[#2B7A78] border border-[#22567d] focus:ring-[#3AAFA9] focus:border-[#3AAFA9] p-2 text-[#DEF2F1]" 
+                       placeholder="Ex: 20" />
+            </div>
+            
+            <div x-show="capacityType === 'dynamic'" class="ml-6">
+                <div class="bg-[#3AAFA9]/20 border border-[#3AAFA9] rounded-lg p-3">
+                    <p class="text-sm text-[#DEF2F1]">
+                        <strong>Capacité automatique :</strong> Le nombre de places sera calculé automatiquement selon la formule :<br>
+                        <span class="font-mono text-[#3AAFA9]">Nombre de moniteurs inscrits × 5</span>
+                    </p>
+                    <p class="text-xs text-[#DEF2F1]/70 mt-2">
+                        La capacité s'ajustera automatiquement à chaque inscription/désinscription de moniteur
+                    </p>
+                </div>
             </div>
         </div>
 

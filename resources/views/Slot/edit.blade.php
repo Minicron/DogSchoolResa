@@ -1,8 +1,146 @@
-<div class="bg-[#17252A] shadow-md rounded-lg p-6 max-w-3xl mx-auto">
-    <h2 class="text-2xl text-[#DEF2F1] font-bold mb-6">Modifier un cours</h2>
-    <form hx-post="/admin-club/slots/edit/{{ $slot->id }}" hx-target="#main-adminclub" hx-swap="innerHTML" 
-          x-data="{ autoClose: {{ old('auto_close', $slot->auto_close) ? 'true' : 'false' }} }" 
-          class="space-y-4">
+<div x-data="{ 
+    autoClose: {{ old('auto_close', $slot->auto_close) ? 'true' : 'false' }},
+    capacityType: '{{ old('capacity_type', $slot->capacity_type ?? 'none') }}',
+    showConfirmationModal: false,
+    confirmationData: null,
+    originalDay: {{ $slot->day_of_week }},
+    originalStartTime: '{{ $slot->start_time }}',
+    originalEndTime: '{{ $slot->end_time }}',
+    
+    init() {
+        console.log('Alpine.js initialized with:', {
+            originalDay: this.originalDay,
+            originalStartTime: this.originalStartTime,
+            originalEndTime: this.originalEndTime,
+            showConfirmationModal: this.showConfirmationModal
+        });
+    },
+    
+    async handleSubmit(event) {
+        event.preventDefault();
+        const formData = new FormData(event.target);
+        const dayChanged = this.originalDay != formData.get('day_of_week');
+        const timeChanged = this.originalStartTime != formData.get('time_start') || this.originalEndTime != formData.get('time_end');
+        
+        console.log('Debug - Original:', { day: this.originalDay, start: this.originalStartTime, end: this.originalEndTime });
+        console.log('Debug - New:', { day: formData.get('day_of_week'), start: formData.get('time_start'), end: formData.get('time_end') });
+        console.log('Debug - Changed:', { dayChanged, timeChanged });
+        
+        if (dayChanged || timeChanged) {
+            console.log('Debug - Showing confirmation modal');
+            this.confirmationData = {
+                day: formData.get('day_of_week'),
+                start_time: formData.get('time_start'),
+                end_time: formData.get('time_end'),
+                name: formData.get('name'),
+                description: formData.get('description'),
+                location: formData.get('location'),
+                capacity_type: formData.get('capacity_type'),
+                capacity: formData.get('capacity'),
+                auto_close: formData.get('auto_close'),
+                close_duration: formData.get('close_duration'),
+                is_restricted: formData.get('is_restricted'),
+                has_groups: formData.get('has_groups'),
+                groups: formData.getAll('groups[]')
+            };
+            this.showConfirmationModal = true;
+            console.log('Debug - Modal should be visible:', this.showConfirmationModal);
+            console.log('Debug - showConfirmationModal value:', this.showConfirmationModal);
+            console.log('Debug - confirmationData:', this.confirmationData);
+        } else {
+            console.log('Debug - No schedule change, submitting normally');
+            // Pas de changement d'horaire, soumission normale
+            await this.submitNormalForm(formData);
+        }
+    },
+    
+    async submitNormalForm(formData) {
+        try {
+            const response = await fetch('/admin-club/slots/edit/{{ $slot->id }}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').getAttribute('content')
+                },
+                body: formData
+            });
+            
+            if (response.ok) {
+                // Recharger la page des slots
+                htmx.ajax('GET', '/admin-club/slots', '#main-adminclub');
+            } else {
+                alert('Erreur lors de la modification du créneau');
+            }
+        } catch (error) {
+            console.error('Erreur:', error);
+            alert('Erreur lors de la modification du créneau');
+        }
+    },
+    
+    async confirmScheduleChange() {
+        this.showConfirmationModal = false;
+        
+        const formData = new FormData();
+        
+        // Ajouter les données avec les bons noms de champs
+        formData.append('day_of_week', this.confirmationData.day || '');
+        formData.append('time_start', this.confirmationData.start_time || '');
+        formData.append('time_end', this.confirmationData.end_time || '');
+        formData.append('name', this.confirmationData.name || '');
+        formData.append('description', this.confirmationData.description || '');
+        formData.append('location', this.confirmationData.location || '');
+        formData.append('capacity_type', this.confirmationData.capacity_type || '');
+        formData.append('capacity', this.confirmationData.capacity || '');
+        formData.append('auto_close', this.confirmationData.auto_close || '');
+        formData.append('close_duration', this.confirmationData.close_duration || '');
+        formData.append('is_restricted', this.confirmationData.is_restricted || '');
+        formData.append('has_groups', this.confirmationData.has_groups || '');
+        
+        // Ajouter les groupes s'ils existent
+        if (this.confirmationData.groups && Array.isArray(this.confirmationData.groups)) {
+            this.confirmationData.groups.forEach(value => {
+                formData.append('groups[]', value);
+            });
+        }
+        
+        // Ajouter le token CSRF
+        formData.append('_token', document.querySelector('meta[name=csrf-token]').getAttribute('content'));
+        
+        console.log('Debug - FormData contents:');
+        for (let [key, value] of formData.entries()) {
+            console.log(key + ': ' + value);
+        }
+        
+        try {
+            const response = await fetch('/admin-club/slots/edit-with-schedule-change/{{ $slot->id }}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').getAttribute('content')
+                },
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Recharger la page des slots
+                htmx.ajax('GET', '/admin-club/slots', '#main-adminclub');
+            } else {
+                alert('Erreur lors de la modification : ' + result.message);
+            }
+        } catch (error) {
+            console.error('Erreur:', error);
+            alert('Erreur lors de la modification du créneau');
+        }
+    },
+    
+    cancelScheduleChange() {
+        this.showConfirmationModal = false;
+        this.confirmationData = null;
+    }
+}">
+    <div class="bg-[#17252A] shadow-md rounded-lg p-6 max-w-3xl mx-auto">
+        <h2 class="text-2xl text-[#DEF2F1] font-bold mb-6">Modifier un cours</h2>
+        <form @submit="handleSubmit" class="space-y-4">
         @csrf
         <!-- Nom -->
         <div>
@@ -62,23 +200,62 @@
                              focus:ring-[#3AAFA9] focus:border-[#3AAFA9] p-2 text-[#DEF2F1]">{{ old('description', $slot->description) }}</textarea>
         </div>
 
-        <!-- Grille: Capacité & Alerte moniteurs -->
-        <div class="grid grid-cols-2 gap-4">
+        <!-- Gestion de la capacité -->
+        <div class="space-y-4">
             <div>
-                <label for="capacity" class="block text-sm font-medium text-[#DEF2F1]">Capacité</label>
-                <input id="capacity" name="capacity" type="number" required 
+                <label class="block text-sm font-medium text-[#DEF2F1] mb-2">Gestion de la capacité</label>
+                
+                <!-- Option 1: Pas de limite -->
+                <div class="flex items-center mb-3">
+                    <input type="radio" id="capacity_none" name="capacity_type" value="none" x-model="capacityType"
+                           {{ old('capacity_type', $slot->capacity_type ?? 'none') == 'none' ? 'checked' : '' }}
+                           class="h-4 w-4 text-[#3AAFA9] focus:ring-[#3AAFA9] border-gray-300">
+                    <label for="capacity_none" class="ml-2 block text-sm text-[#DEF2F1]">
+                        <strong>Aucune limite</strong> - Le cours peut accepter un nombre illimité de participants
+                    </label>
+                </div>
+                
+                <!-- Option 2: Limite fixe -->
+                <div class="flex items-center mb-3">
+                    <input type="radio" id="capacity_fixed" name="capacity_type" value="fixed" x-model="capacityType"
+                           {{ old('capacity_type', $slot->capacity_type ?? 'none') == 'fixed' ? 'checked' : '' }}
+                           class="h-4 w-4 text-[#3AAFA9] focus:ring-[#3AAFA9] border-gray-300">
+                    <label for="capacity_fixed" class="ml-2 block text-sm text-[#DEF2F1]">
+                        <strong>Limite fixe</strong> - Définir un nombre maximum de participants
+                    </label>
+                </div>
+                
+                <!-- Option 3: Limite dynamique -->
+                <div class="flex items-center mb-3">
+                    <input type="radio" id="capacity_dynamic" name="capacity_type" value="dynamic" x-model="capacityType"
+                           {{ old('capacity_type', $slot->capacity_type ?? 'none') == 'dynamic' ? 'checked' : '' }}
+                           class="h-4 w-4 text-[#3AAFA9] focus:ring-[#3AAFA9] border-gray-300">
+                    <label for="capacity_dynamic" class="ml-2 block text-sm text-[#DEF2F1]">
+                        <strong>Limite dynamique</strong> - La capacité dépend du nombre de moniteurs (× 5)
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Champs conditionnels -->
+            <div x-show="capacityType === 'fixed'" class="ml-6">
+                <label for="capacity" class="block text-sm font-medium text-[#DEF2F1]">Nombre maximum de participants</label>
+                <input id="capacity" name="capacity" type="number" min="1" x-bind:required="capacityType === 'fixed'"
                        value="{{ old('capacity', $slot->capacity) }}"
                        class="mt-1 block w-full rounded bg-[#2B7A78] border border-[#22567d] 
-                              focus:ring-[#3AAFA9] focus:border-[#3AAFA9] p-2 text-[#DEF2F1]" />
+                              focus:ring-[#3AAFA9] focus:border-[#3AAFA9] p-2 text-[#DEF2F1]" 
+                       placeholder="Ex: 20" />
             </div>
-            <div>
-                <label for="alert_monitors" class="block text-sm font-medium text-[#DEF2F1]">
-                    Alerter si le nombre de moniteurs est inférieur à
-                </label>
-                <input id="alert_monitors" name="alert_monitors" type="number" 
-                       value="{{ old('alert_monitors', $slot->alert_monitors) }}"
-                       class="mt-1 block w-full rounded bg-[#2B7A78] border border-[#22567d] 
-                              focus:ring-[#3AAFA9] focus:border-[#3AAFA9] p-2 text-[#DEF2F1]" />
+            
+            <div x-show="capacityType === 'dynamic'" class="ml-6">
+                <div class="bg-[#3AAFA9]/20 border border-[#3AAFA9] rounded-lg p-3">
+                    <p class="text-sm text-[#DEF2F1]">
+                        <strong>Capacité automatique :</strong> Le nombre de places sera calculé automatiquement selon la formule :<br>
+                        <span class="font-mono text-[#3AAFA9]">Nombre de moniteurs inscrits × 5</span>
+                    </p>
+                    <p class="text-xs text-[#DEF2F1]/70 mt-2">
+                        La capacité s'ajustera automatiquement à chaque inscription/désinscription de moniteur
+                    </p>
+                </div>
             </div>
         </div>
 
@@ -179,4 +356,61 @@
             </button>
         </div>
     </form>
+
+    <!-- Modal de confirmation pour changement d'horaire -->
+    <div x-show="showConfirmationModal" x-cloak 
+         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0">
+        <div class="bg-white rounded-lg p-6 max-w-md mx-4"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 transform scale-95"
+             x-transition:enter-end="opacity-100 transform scale-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 transform scale-100"
+             x-transition:leave-end="opacity-0 transform scale-95">
+            <div class="flex items-center mb-4">
+                <div class="flex-shrink-0">
+                    <svg class="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-lg font-medium text-gray-900">Confirmation requise</h3>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <p class="text-sm text-gray-600">
+                    Vous avez modifié l'horaire de ce créneau. Cette action va :
+                </p>
+                <ul class="mt-2 text-sm text-gray-600 list-disc list-inside space-y-1">
+                    <li>Annuler tous les cours futurs de ce créneau</li>
+                    <li>Notifier tous les participants inscrits</li>
+                    <li>Créer de nouveaux cours avec le nouvel horaire</li>
+                    <li>Les participants devront se réinscrire aux nouveaux cours</li>
+                </ul>
+            </div>
+            
+            <div class="flex justify-end space-x-3">
+                <button type="button" @click="cancelScheduleChange"
+                        class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition">
+                    Annuler
+                </button>
+                <button type="button" @click="confirmScheduleChange"
+                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition">
+                    Confirmer la modification
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Debug indicator -->
+    <div x-show="showConfirmationModal" class="fixed top-4 right-4 bg-red-500 text-white p-2 rounded z-50">
+        Modal should be visible!
+    </div>
 </div>
