@@ -273,6 +273,78 @@
         // Configurer le formulaire et afficher le modal
         const form = document.getElementById('cancel-form');
         form.setAttribute('action', `/admin-club/occurence/${slotOccurrenceId}/cancel`);
+        
+        // Gérer la soumission du formulaire avec fetch pour traiter la réponse JSON
+        form.onsubmit = function(e) {
+            e.preventDefault();
+            
+            const reason = document.getElementById('cancel-reason').value;
+            
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    reason: reason
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Fermer la modal d'annulation
+                    closeCancelModal();
+                    
+                    // Fermer la modal du calendrier si elle existe
+                    if (typeof closeModal === 'function') {
+                        closeModal();
+                    }
+                    
+                    // Afficher un message de succès
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            title: 'Succès !',
+                            text: data.message,
+                            icon: 'success',
+                            timer: 2000,
+                            showConfirmButton: false
+                        }).then(() => {
+                            // Rafraîchir la page après le message
+                            window.location.reload();
+                        });
+                    } else {
+                        alert(data.message);
+                        window.location.reload();
+                    }
+                } else {
+                    // Afficher l'erreur
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            title: 'Erreur',
+                            text: data.error || 'Une erreur est survenue',
+                            icon: 'error'
+                        });
+                    } else {
+                        alert(data.error || 'Une erreur est survenue');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Erreur',
+                        text: 'Une erreur est survenue lors de l\'annulation',
+                        icon: 'error'
+                    });
+                } else {
+                    alert('Une erreur est survenue lors de l\'annulation');
+                }
+            });
+        };
+        
         document.getElementById('cancel-modal').classList.remove('hidden');
     }
 

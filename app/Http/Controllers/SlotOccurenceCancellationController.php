@@ -53,11 +53,16 @@ class SlotOccurenceCancellationController extends Controller
             'user_id' => auth()->id(),
         ]);
 
-        foreach ($slotOccurence->attendees as $attendee) {
-            //Mail::to($attendee->user->email)->send(new SlotOccurenceCancelledMail($slotOccurence));
-        }
-    
-        return view('AdminClub.partials.slot_tile', compact('slotOccurence'));
+        // Envoyer les notifications par email
+        $emailService = app(\App\Services\EmailService::class);
+        $emailService->sendCancellationNotification($slotOccurence, $request->input('reason'));
+
+        // Retourner une réponse qui ferme la modal et rafraîchit la page
+        return response()->json([
+            'success' => true,
+            'message' => 'Cours annulé avec succès',
+            'redirect' => true
+        ]);
     }
 
 }

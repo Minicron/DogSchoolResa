@@ -78,7 +78,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('city');
-            $table->foreignId('admin_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('admin_id')->constrained('users')->onDelete('restrict');
             $table->text('affiliates')->nullable();
             $table->text('logo')->nullable();
             $table->text('description')->nullable();
@@ -89,7 +89,7 @@ return new class extends Migration
 
         // Ajouter la clé étrangère club_id à la table users
         Schema::table('users', function (Blueprint $table) {
-            $table->foreignId('club_id')->nullable()->constrained()->onDelete('cascade');
+            $table->foreignId('club_id')->nullable()->constrained()->onDelete('set null');
         });
 
         // Table slots avec tous les champs

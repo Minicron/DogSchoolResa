@@ -457,8 +457,37 @@ class AdminClubController extends Controller
             return response()->json(['error' => 'Vous ne pouvez pas supprimer votre propre compte.'], 403);
         }
 
+        // Empêcher la suppression d'un super-admin
+        if ($member->role === 'super-admin') {
+            return response()->json(['error' => 'Impossible de supprimer un super-administrateur.'], 403);
+        }
+
+        // Empêcher la suppression d'un admin de club (sauf si c'est le dernier admin)
+        if ($member->role === 'admin-club') {
+            $adminCount = User::where('club_id', $member->club_id)
+                ->where('role', 'admin-club')
+                ->count();
+            
+            if ($adminCount <= 1) {
+                return response()->json(['error' => 'Impossible de supprimer le dernier administrateur du club.'], 403);
+            }
+        }
+
+        // Vérifier si l'utilisateur est admin d'un club
+        $isClubAdmin = Club::where('admin_id', $member->id)->exists();
+        if ($isClubAdmin) {
+            return response()->json(['error' => 'Impossible de supprimer un utilisateur qui est administrateur d\'un club. Veuillez d\'abord transférer l\'administration du club.'], 403);
+        }
+
         try {
             $memberName = $member->firstname . ' ' . $member->name;
+            
+            // Supprimer d'abord les relations pour éviter les problèmes de clés étrangères
+            $member->attendedSlots()->delete();
+            $member->monitoredSlots()->delete();
+            $member->waitingList()->delete();
+            
+            // Supprimer l'utilisateur
             $member->delete();
 
             // Retourner à la liste des membres avec un message de succès
